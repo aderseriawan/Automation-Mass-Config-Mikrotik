@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block title %}Mass Add Devices - AutomateIP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-area {
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .upload-area:hover,
+    .upload-area.dragover {
+        border-color: var(--primary-color);
+        background-color: rgba(52, 152, 219, 0.1);
+    }
+
+    .upload-icon {
+        font-size: 4rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+    }
+
+    .file-name {
+        font-weight: 500;
+        color: var(--primary-color);
+    }
+
+    .template-card {
+        transition: all 0.3s ease;
+    }
+
+    .template-card:hover {
+        transform: translateY(-5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4">
+            <i class="fas fa-upload me-2"></i>Mass Add Devices
+        </h1>
+        <p class="text-muted">Upload an Excel file containing multiple devices to add them in bulk.</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-upload me-2"></i>Upload Excel File
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    <div class="upload-area" id="dropZone">
+                        <input type="file" name="file" id="fileInput" accept=".xlsx,.xls" class="d-none" required>
+                        <div id="uploadPrompt">
+                            <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                            <h4>Drag & Drop your Excel file here</h4>
+                            <p class="text-muted mb-3">or</p>
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                <i class="fas fa-folder-open me-2"></i>Browse Files
+                            </button>
+                        </div>
+                        <div id="fileInfo" class="d-none">
+                            <i class="fas fa-file-excel upload-icon text-success"></i>
+                            <h4 class="file-name" id="fileName">filename.xlsx</h4>
+                            <p class="text-muted mb-3">Click to change file</p>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-upload me-2"></i>Upload and Process
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card template-card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-download me-2"></i>Excel Template
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>Your Excel file must contain the following columns:</p>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>IP</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Device IP address (e.g., 192.168.1.1)</td>
+                        </tr>
+                        <tr>
+                            <td><code>Hostname</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Device hostname or description</td>
+                        </tr>
+                        <tr>
+                            <td><code>Username</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Login username</td>
+                        </tr>
+                        <tr>
+                            <td><code>Password</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Login password</td>
+                        </tr>
+                        <tr>
+                            <td><code>Vendor</code></td>
+                            <td><span class="badge bg-danger">Required</span></td>
+                            <td>Device vendor (Mikrotik or Cisco)</td>
+                        </tr>
+                        <tr>
+                            <td><code>SSH Port</code></td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>SSH port number (default: 22)</td>
+                        </tr>
+                        <tr>
+                            <td><code>API Port</code></td>
+                            <td><span class="badge bg-secondary">Optional</span></td>
+                            <td>API port number (default: 8728)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <a href="{% url 'download_template' %}" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-download me-2"></i>Download Template
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Example Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Example Data
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>IP</th>
+                                <th>Hostname</th>
+                                <th>Username</th>
+                                <th>Password</th>
+                                <th>Vendor</th>
+                                <th>SSH Port</th>
+                                <th>API Port</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>192.168.1.1</td>
+                                <td>Router-Core</td>
+                                <td>admin</td>
+                                <td>password123</td>
+                                <td>Mikrotik</td>
+                                <td>22</td>
+                                <td>8728</td>
+                            </tr>
+                            <tr>
+                                <td>192.168.1.2</td>
+                                <td>Switch-Access</td>
+                                <td>admin</td>
+                                <td>password123</td>
+                                <td>Cisco</td>
+                                <td>22</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const form = document.getElementById('uploadForm');
+
+    // Drag & Drop functionality
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        dropZone.classList.add('dragover');
+    }
+
+    function unhighlight(e) {
+        dropZone.classList.remove('dragover');
+    }
+
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    }
+
+    fileInput.addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+    });
+
+    dropZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    function handleFiles(files) {
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.name.match(/\.(xlsx|xls)$/)) {
+                fileName.textContent = file.name;
+                uploadPrompt.classList.add('d-none');
+                fileInfo.classList.remove('d-none');
+            } else {
+                alert('Please upload an Excel file (.xlsx or .xls)');
+                fileInput.value = '';
+            }
+        }
+    }
+
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+        if (!fileInput.files.length) {
+            e.preventDefault();
+            alert('Please select a file to upload.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

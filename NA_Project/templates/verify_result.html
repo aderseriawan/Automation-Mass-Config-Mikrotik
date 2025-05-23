@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Results - DevicesManagement{% endblock %}
+
+{% block extra_css %}
+<style>
+    .command-output {
+        font-family: 'Courier New', Courier, monospace;
+        white-space: pre-wrap;
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+    }
+    
+    .device-info {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+    }
+    
+    .command-list {
+        background-color: #fff3cd;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-terminal me-2"></i>Verify Results</h2>
+        <div class="btn-group">
+            <a href="{% url 'verify_logs' %}" class="btn btn-primary">
+                <i class="fas fa-list me-2"></i>View Verify Logs
+            </a>
+            <a href="{% url 'verify_config' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Verify
+            </a>
+            <a href="" class="btn btn-success" onclick="window.location.reload(); return false;">
+                <i class="fas fa-sync-alt me-2"></i>Refresh
+            </a>
+        </div>
+    </div>
+
+    <!-- Device Information -->
+    <div class="device-info">
+        <h5><i class="fas fa-server me-2"></i>Selected Devices:</h5>
+        <div class="row">
+            {% for device in devices %}
+            <div class="col-md-4 mb-2">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-network-wired me-2"></i>
+                    <span>{{ device.ip_address }}{% if device.hostname %} ({{ device.hostname }}){% endif %}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Commands Executed -->
+    <div class="command-list">
+        <h5><i class="fas fa-code me-2"></i>Commands Executed:</h5>
+        <ul class="list-unstyled mb-0">
+            {% for cmd in commands %}
+            <li><code>{{ cmd }}</code></li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Command Output -->
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+            <i class="fas fa-terminal me-2"></i>Output
+        </div>
+        <div class="card-body p-0">
+            <div class="command-output">{{ result }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

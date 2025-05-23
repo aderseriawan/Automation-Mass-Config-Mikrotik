@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Devices Management{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4 mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body dashboard-card dashboard-card-blue">
+                <div>
+                    <h6 class="dashboard-card-title">Total Devices</h6>
+                    <h2 class="dashboard-card-number">{{ all_device }}</h2>
+                </div>
+                <div class="dashboard-card-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body dashboard-card dashboard-card-orange">
+                <div>
+                    <h6 class="dashboard-card-title">MikroTik Devices</h6>
+                    <h2 class="dashboard-card-number">{{ mikrotik_device }}</h2>
+                </div>
+                <div class="dashboard-card-icon">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body dashboard-card dashboard-card-turquoise">
+                <div>
+                    <h6 class="dashboard-card-title">Other Devices</h6>
+                    <h2 class="dashboard-card-number">{{ all_device|add:"-mikrotik_device" }}</h2>
+                </div>
+                <div class="dashboard-card-icon">
+                    <i class="fas fa-hdd"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0 d-flex align-items-center">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body quick-actions">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="{% url 'configure' %}" class="btn btn-primary w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
+                            <i class="fas fa-cog me-2"></i>Configure
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'verify_config' %}" class="btn btn-secondary w-100 py-3 quick-action-button" style="background-color: var(--medium-blue);">
+                            <i class="fas fa-check-circle me-2"></i>Verify
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'mass_add_device' %}" class="btn btn-success w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
+                            <i class="fas fa-plus me-2"></i>Add Devices
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'mass_delete_log' %}" class="btn btn-danger w-100 py-3 quick-action-button">
+                            <i class="fas fa-trash me-2"></i>Clear Logs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Events -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0 d-flex align-items-center">
+                    <i class="fas fa-history me-2"></i>Recent Events
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Target</th>
+                                <th>Action</th>
+                                <th>Status</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in last_event %}
+                            <tr>
+                                <td>{{ event.time|date:"Y-m-d H:i:s" }}</td>
+                                <td>
+                                    <span class="badge" style="background-color: var(--medium-blue);">{{ event.target }}</span>
+                                </td>
+                                <td>{{ event.action }}</td>
+                                <td>
+                                    {% if event.status == 'Success' %}
+                                        <span class="badge bg-success status-success">Success</span>
+                                    {% else %}
+                                        <span class="badge bg-danger status-failed">Error</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="{% if event.status == 'Success' %}status-success{% else %}status-failed{% endif %}">{{ event.messages|truncatechars:50 }}</small>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No recent events</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

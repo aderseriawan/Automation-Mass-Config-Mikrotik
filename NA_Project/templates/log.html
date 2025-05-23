@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ log_type }} - DevicesManagement{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Status colors */
+    .status-success {
+        color: #4CAF50 !important;
+        font-weight: 600;
+    }
+    
+    .status-failed {
+        color: #F44336 !important;
+        font-weight: 600;
+    }
+    
+    .status-warning {
+        color: #FF9800 !important;
+        font-weight: 600;
+    }
+    
+    .command-output {
+        font-family: 'Courier New', Courier, monospace;
+        white-space: pre-wrap;
+        background-color: var(--dark-blue);
+        color: #ffffff;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    
+    .log-entry {
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        background-color: var(--card-bg);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .log-entry:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+    .log-header {
+        padding: 0.75rem 1rem;
+        background-color: var(--secondary-color);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #ffffff;
+    }
+
+    .log-body {
+        padding: 1.25rem;
+        color: var(--text-color);
+    }
+
+    .log-command {
+        font-family: 'Courier New', Courier, monospace;
+        background-color: var(--orange);
+        color: #ffffff;
+        padding: 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .log-output {
+        font-family: 'Courier New', Courier, monospace;
+        background-color: var(--dark-blue);
+        color: #ffffff;
+        padding: 1rem;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    /* Improved button styling */
+    .btn-outline-secondary {
+        color: var(--text-color);
+        border-color: var(--border-color);
+    }
+    
+    .btn-outline-secondary:hover, 
+    .btn-outline-secondary.active {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+        color: #ffffff;
+    }
+    
+    /* Ensure contrast in dropdown menus */
+    .dropdown-menu {
+        background-color: var(--card-bg);
+        border-color: var(--border-color);
+    }
+    
+    .dropdown-item {
+        color: var(--text-color);
+    }
+    
+    .dropdown-item:hover,
+    .dropdown-item:focus,
+    .dropdown-item.active {
+        background-color: var(--secondary-color);
+        color: #ffffff;
+    }
+    
+    /* Better table styling */
+    .table {
+        color: var(--text-color);
+    }
+
+    .sort-link {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .sort-link:hover {
+        text-decoration: underline;
+    }
+
+    .sort-icon {
+        font-size: 0.8em;
+        margin-left: 0.2em;
+    }
+
+    .dropdown-menu {
+        min-width: 200px;
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+    }
+
+    .dropdown-item i {
+        margin-right: 0.5rem;
+        width: 20px;
+    }
+
+    .dropdown-divider {
+        margin: 0.3rem 0;
+    }
+
+    .btn-group > .dropdown:not(:last-child) > .btn {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .btn-group > .dropdown:not(:first-child) > .btn {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        margin-left: -1px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ log_type }}</h2>
+        <div class="btn-group">
+            <div class="dropdown me-2">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="logsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-list me-2"></i>Logs
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="logsDropdown">
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'Configuration Logs' %}active{% endif %}" href="{% url 'log' %}">
+                            <i class="fas fa-cog"></i>Configuration Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'Verify Logs' %}active{% endif %}" href="{% url 'verify_logs' %}">
+                            <i class="fas fa-check-circle"></i>Verify Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'Device Management Logs' %}active{% endif %}" href="{% url 'device_logs' %}">
+                            <i class="fas fa-server"></i>Device Logs
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="dropdown me-2">
+                <button class="btn btn-danger dropdown-toggle" type="button" id="clearLogsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-trash me-2"></i>Clear Logs
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="clearLogsDropdown">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'mass_delete_log' %}?type=config">
+                            <i class="fas fa-cog"></i>Clear Configuration Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'mass_delete_log' %}?type=verify">
+                            <i class="fas fa-check-circle"></i>Clear Verify Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'mass_delete_log' %}?type=device">
+                            <i class="fas fa-server"></i>Clear Device Logs
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <a href="{{ request.path }}?{{ request.GET.urlencode }}" class="btn btn-success">
+                <i class="fas fa-sync-alt me-2"></i>Refresh
+            </a>
+            <a href="{{ request.path }}?{{ request.GET.urlencode }}&export=excel" class="btn btn-info">
+                <i class="fas fa-file-excel me-2"></i>Export to Excel
+            </a>
+        </div>
+    </div>
+
+    {% if log_type == 'Configuration Logs' %}
+    <div class="mb-3">
+        <div class="btn-group">
+            <a href="?sort_by=target&order={% if current_sort == 'target' and current_order == 'asc' %}desc{% else %}asc{% endif %}" 
+               class="btn btn-outline-secondary {% if current_sort == 'target' %}active{% endif %}">
+                Target IP
+                {% if current_sort == 'target' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+            <a href="?sort_by=hostname&order={% if current_sort == 'hostname' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'hostname' %}active{% endif %}">
+                Hostname
+                {% if current_sort == 'hostname' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+            <a href="?sort_by=status&order={% if current_sort == 'status' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'status' %}active{% endif %}">
+                Status
+                {% if current_sort == 'status' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+            <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
+                Time
+                {% if current_sort == 'time' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if log_type == 'Verify Logs' %}
+    <div class="mb-3">
+        <div class="btn-group">
+            <a href="?sort_by=target&order={% if current_sort == 'target' and current_order == 'asc' %}desc{% else %}asc{% endif %}" 
+               class="btn btn-outline-secondary {% if current_sort == 'target' %}active{% endif %}">
+                Target IP
+                {% if current_sort == 'target' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+            <a href="?sort_by=hostname&order={% if current_sort == 'hostname' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'hostname' %}active{% endif %}">
+                Hostname
+                {% if current_sort == 'hostname' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+            <a href="?sort_by=status&order={% if current_sort == 'status' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'status' %}active{% endif %}">
+                Status
+                {% if current_sort == 'status' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+            <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
+                Time
+                {% if current_sort == 'time' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% for log in logs %}
+    <div class="log-entry">
+        <div class="log-header">
+            <div>
+                <strong>{{ log.target }}</strong>
+                {% if log_type == 'Verify Logs' or log_type == 'Configuration Logs' %}
+                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+                <span style="color: var(--primary-color);">{{ log.hostname }}</span>
+                {% endif %}
+                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+                <td><span class="badge {% if log.status == 'Success' %}bg-success{% elif log.status == 'Failed' %}bg-danger{% else %}bg-warning{% endif %} status-{{ log.status|lower }}">{{ log.status }}</span></td>
+                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+                <span style="color: var(--text-color);">{{ log.action }}</span>
+                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+                <small style="color: var(--text-color); opacity: 0.7;">{{ log.time|date:"Y-m-d H:i:s" }}</small>
+            </div>
+        </div>
+        <div class="log-body">
+            {% if log.messages %}
+            <div class="mb-3">
+                <strong>Messages:</strong>
+                <p class="mb-2" style="color: var(--text-color);"><span class="status-{{ log.status|lower }}">{{ log.messages }}</span></p>
+            </div>
+            {% endif %}
+            
+            {% if log.action == 'Verify' %}
+                {% if log.command %}
+                <div class="mb-3">
+                    <strong style="color: var(--text-color);">Input Command:</strong>
+                    <div class="log-command">{{ log.command }}</div>
+                </div>
+                {% endif %}
+                
+                {% if log.output %}
+                <div>
+                    <strong style="color: var(--text-color);">Output:</strong>
+                    <div class="log-output">{{ log.output }}</div>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert" style="background-color: var(--secondary-color); color: var(--dark-teal); border: none; border-radius: 10px;">
+        <i class="fas fa-info-circle me-2"></i>No logs found.
+    </div>
+    {% endfor %}
+</div>
+
+{% block extra_js %}
+<script>
+    // Initialize Bootstrap dropdowns
+    document.addEventListener('DOMContentLoaded', function() {
+        var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'))
+        var dropdownList = dropdownElementList.map(function(dropdownToggleEl) {
+            return new bootstrap.Dropdown(dropdownToggleEl)
+        })
+    })
+</script>
+{% endblock %}
+{% endblock %}

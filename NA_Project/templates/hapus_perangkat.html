@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center">Mass Delete Device</h1>
+    <form method="POST" class="needs-validation mt-4" novalidate>
+        {% csrf_token %}
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col"><input type="checkbox" id="select-all"></th>
+                        <th scope="col">IP Address</th>
+                        <th scope="col">Hostname</th>
+                        <th scope="col">Vendor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td><input type="checkbox" name="devices" value="{{ device.id }}"></td>
+                        <td>{{ device.ip_address }}</td>
+                        <td>{{ device.hostname }}</td>
+                        <td>{{ device.vendor }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col text-center">
+                <button type="submit" class="btn btn-danger">Delete Selected Devices</button>
+            </div>
+        </div>
+
+    </form>
+
+    {% if message %}
+        <div class="row mt-4">
+            <div class="col text-center">
+                <div class="alert alert-info">
+                    {{ message }}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // Script to select all checkboxes when 'Select All' is clicked
+    document.getElementById('select-all').addEventListener('click', function (event) {
+        const checkboxes = document.querySelectorAll('input[name="devices"]');
+        checkboxes.forEach(checkbox => checkbox.checked = event.target.checked);
+    });
+
+    // Bootstrap form validation
+    (function () {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
+</script>
+{% endblock content %}

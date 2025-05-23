@@ -1,0 +1,7 @@
+django>=5.2.1
+routeros-api>=0.17.0
+paramiko>=3.3.1
+pandas>=2.0.0
+openpyxl>=3.1.2
+xlrd>=2.0.1
+xlsxwriter>=3.1.2

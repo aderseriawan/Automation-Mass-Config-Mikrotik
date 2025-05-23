@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ mode }} - DevicesManagement{% endblock %}
+
+{% block extra_css %}
+<style>
+    .device-checkbox {
+        cursor: pointer;
+    }
+    
+    .method-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .method-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .btn-check:checked + .method-card {
+        border-color: var(--bs-primary);
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    
+    .command-editor {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <form method="POST" id="commandForm">
+        {% csrf_token %}
+        
+        <!-- Method Selection -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas {% if 'Verify' in mode %}fa-search{% else %}fa-cog{% endif %} me-2"></i>
+                    Select Method
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <input type="radio" class="btn-check" name="method" id="api_method" value="api" checked>
+                        <label class="method-card card h-100 text-center p-4" for="api_method">
+                            <div class="card-body">
+                                <i class="fas fa-cloud fa-3x mb-3 text-primary"></i>
+                                <h5>{% if 'Verify' in mode %}Verify{% else %}Configure{% endif %} via API</h5>
+                                <p class="text-muted mb-0">Use MikroTik API for {% if 'Verify' in mode %}verification{% else %}configuration{% endif %}</p>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="radio" class="btn-check" name="method" id="ssh_method" value="ssh">
+                        <label class="method-card card h-100 text-center p-4" for="ssh_method">
+                            <div class="card-body">
+                                <i class="fas fa-terminal fa-3x mb-3 text-primary"></i>
+                                <h5>{% if 'Verify' in mode %}Verify{% else %}Configure{% endif %} via SSH</h5>
+                                <p class="text-muted mb-0">Use SSH for {% if 'Verify' in mode %}verification{% else %}configuration{% endif %}</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Selection -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-server me-2"></i>Select Devices
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="selectAll" class="form-check-input">
+                                    </div>
+                                </th>
+                                <th>IP Address</th>
+                                <th>Hostname</th>
+                                <th>Vendor</th>
+                                <th>Connection Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input type="checkbox" name="device" value="{{ device.id }}" 
+                                               class="form-check-input device-checkbox"
+                                               {% if request.GET.device|add:"0" == device.id %}checked{% endif %}>
+                                    </div>
+                                </td>
+                                <td>{{ device.ip_address }}</td>
+                                <td>{{ device.hostname|default:"-" }}</td>
+                                <td>
+                                    <span class="badge {% if device.vendor.lower == 'mikrotik' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                        {{ device.vendor }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="api-port badge bg-info me-2">API: {{ device.api_port|default:"8728" }}</span>
+                                    <span class="ssh-port badge bg-success" style="display: none;">SSH: {{ device.ssh_port|default:"22" }}</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <p class="text-muted mb-0">No devices found</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command Input -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-terminal me-2"></i>MikroTik Commands
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <textarea class="form-control command-editor" name="mikrotik_command" rows="10" 
+                              placeholder="{% if 'Verify' in mode %}Enter MikroTik commands for verification (e.g., print, export, monitor)...{% else %}Enter MikroTik configuration commands...{% endif %}"></textarea>
+                    <small class="form-text text-muted mt-2">
+                        {% if 'Verify' in mode %}
+                        Enter commands to view or monitor device status (e.g., /system resource print, /ip address print)
+                        {% else %}
+                        Enter commands to configure the device (e.g., /user add, /ip address add)
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="text-center mb-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas {% if 'Verify' in mode %}fa-search{% else %}fa-save{% endif %} me-2"></i>
+                {% if 'Verify' in mode %}Execute Verify Commands{% else %}Apply Configuration{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select All functionality
+    const selectAll = document.getElementById('selectAll');
+    const deviceCheckboxes = document.querySelectorAll('.device-checkbox');
+    
+    selectAll.addEventListener('change', function() {
+        deviceCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Method toggle functionality
+    const apiMethod = document.getElementById('api_method');
+    const sshMethod = document.getElementById('ssh_method');
+    const apiPorts = document.querySelectorAll('.api-port');
+    const sshPorts = document.querySelectorAll('.ssh-port');
+    const commandForm = document.getElementById('commandForm');
+
+    function togglePorts(method) {
+        if (method === 'api') {
+            apiPorts.forEach(port => port.style.display = '');
+            sshPorts.forEach(port => port.style.display = 'none');
+            {% if 'Verify' in mode %}
+            commandForm.action = "{% url 'verify_config' %}";
+            {% else %}
+            commandForm.action = "{% url 'configure' %}";
+            {% endif %}
+        } else {
+            apiPorts.forEach(port => port.style.display = 'none');
+            sshPorts.forEach(port => port.style.display = '');
+            {% if 'Verify' in mode %}
+            commandForm.action = "{% url 'verify_config_ssh' %}";
+            {% else %}
+            commandForm.action = "{% url 'configure_ssh' %}";
+            {% endif %}
+        }
+    }
+
+    apiMethod.addEventListener('change', () => togglePorts('api'));
+    sshMethod.addEventListener('change', () => togglePorts('ssh'));
+
+    // Form validation
+    commandForm.addEventListener('submit', function(e) {
+        const selectedDevices = document.querySelectorAll('input[name="device"]:checked');
+        if (selectedDevices.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one device.');
+            return;
+        }
+
+        const command = document.querySelector('textarea[name="mikrotik_command"]').value.trim();
+        if (!command) {
+            e.preventDefault();
+            alert('Please enter at least one command.');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

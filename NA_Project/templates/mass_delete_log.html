@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Clear {{ title }} - DevicesManagement{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ title }}</h2>
+        <div class="btn-group">
+            <div class="dropdown me-2">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="viewLogsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-list me-2"></i>View Logs
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="viewLogsDropdown">
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'config' %}active{% endif %}" href="{% url 'log' %}">
+                            <i class="fas fa-cog me-2"></i>Configuration Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'verify' %}active{% endif %}" href="{% url 'verify_logs' %}">
+                            <i class="fas fa-check-circle me-2"></i>Verify Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'device' %}active{% endif %}" href="{% url 'device_logs' %}">
+                            <i class="fas fa-server me-2"></i>Device Logs
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-danger dropdown-toggle" type="button" id="clearLogsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-trash me-2"></i>Clear Logs
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="clearLogsDropdown">
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'config' %}active{% endif %}" href="{% url 'mass_delete_log' %}?type=config">
+                            <i class="fas fa-cog me-2"></i>Clear Configuration Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'verify' %}active{% endif %}" href="{% url 'mass_delete_log' %}?type=verify">
+                            <i class="fas fa-check-circle me-2"></i>Clear Verify Logs
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item {% if log_type == 'device' %}active{% endif %}" href="{% url 'mass_delete_log' %}?type=device">
+                            <i class="fas fa-server me-2"></i>Clear Device Logs
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Warning!</strong> This action will permanently delete all selected logs. This cannot be undone.
+            </div>
+
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Target</th>
+                                {% if log_type == 'config' or log_type == 'verify' %}
+                                <th>Hostname</th>
+                                {% endif %}
+                                <th>Action</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Messages</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.target }}</td>
+                                {% if log_type == 'config' or log_type == 'verify' %}
+                                <td>
+                                    {% for device in devices %}
+                                        {% if device.ip_address == log.target %}
+                                            {{ device.hostname|default:'-' }}
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                {% endif %}
+                                <td>{{ log.action }}</td>
+                                <td>
+                                    <span class="badge {% if log.status == 'Success' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                                <td>{{ log.time|date:"Y-m-d H:i:s" }}</td>
+                                <td>{{ log.messages }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No logs found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if logs %}
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{{ return_url }}" class="btn btn-secondary me-2">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Clear All Logs
+                    </button>
+                </div>
+                {% else %}
+                <div class="text-center mt-4">
+                    <a href="{{ return_url }}" class="btn btn-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Return to Logs
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,515 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Devices Management{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" href="https://nexa.net.id/favicon.ico" type="image/x-icon">
+    
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            /* Custom color palette - Nexa colors */
+            --dark-blue: #1C2255;
+            --light-blue: #71CFEB;
+            --medium-blue: #3763AF;
+            --orange: #F37021;
+            --light-orange: #FD9612;
+            --success-color: #4CAF50;
+            --danger-color: #F44336;
+            --warning-color: #FF9800;
+            
+            /* Light theme (default) */
+            --primary-color: var(--dark-blue);
+            --secondary-color: var(--medium-blue);
+            --accent-color: var(--orange);
+            --bg-color: #F5F5F5;
+            --text-color: #333333;
+            --card-bg: #ffffff;
+            --card-text: #333333;
+            --icon-color: var(--white);
+            --border-color: rgba(0,0,0,0.1);
+            --nav-text: rgba(255,255,255,0.9);
+            --table-header-bg: var(--dark-blue);
+            --table-header-text: #ffffff;
+            --table-bg: #ffffff;
+            --table-text: #333333;
+            --table-hover: rgba(113, 207, 235, 0.1);
+            --footer-bg: var(--dark-blue);
+            --footer-text: #ffffff;
+            
+            /* Dashboard specific colors */
+            --dashboard-blue-card: var(--medium-blue);
+            --dashboard-orange-card: var(--orange);
+            --dashboard-turquoise-card: var(--light-blue);
+            --command-bg: var(--orange);
+            --output-bg: var(--dark-blue);
+        }
+
+        [data-bs-theme="dark"] {
+            /* Dark theme */
+            --primary-color: var(--light-blue);
+            --secondary-color: var(--medium-blue);
+            --accent-color: var(--orange);
+            --bg-color: #1a1a1a;
+            --text-color: #f5f5f5;
+            --card-bg: #2c2c2c;
+            --card-text: #f5f5f5;
+            --icon-color: var(--white);
+            --border-color: rgba(255,255,255,0.1);
+            --nav-text: rgba(255,255,255,0.9);
+            --table-header-bg: var(--medium-blue);
+            --table-header-text: #ffffff;
+            --table-bg: #2c2c2c;
+            --table-text: #f5f5f5;
+            --table-hover: rgba(113, 207, 235, 0.2);
+            --footer-bg: #151515;
+            --footer-text: #F5F5F5;
+            
+            /* Dashboard specific colors for dark mode */
+            --dashboard-blue-card: #1a237e;
+            --dashboard-orange-card: #e65100;
+            --dashboard-turquoise-card: #006064;
+            --command-bg: var(--orange);
+            --output-bg: #121a40; /* Darker version of dark-blue */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            color: var(--light-beige) !important;
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-link {
+            color: var(--nav-text) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            margin: 0 0.2rem;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--light-beige) !important;
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            color: var(--card-text);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        /* Dashboard card styles */
+        .dashboard-card {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem;
+            color: #ffffff;
+            font-weight: 500;
+        }
+        
+        .dashboard-card-blue {
+            background-color: var(--dashboard-blue-card);
+        }
+        
+        .dashboard-card-orange {
+            background-color: var(--dashboard-orange-card);
+        }
+        
+        .dashboard-card-turquoise {
+            background-color: var(--dashboard-turquoise-card);
+        }
+        
+        .dashboard-card-icon {
+            font-size: 2.5rem;
+            opacity: 0.8;
+        }
+        
+        .dashboard-card-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .dashboard-card-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-header {
+            background-color: var(--secondary-color);
+            color: #ffffff;
+            font-weight: 600;
+            border-bottom: none;
+            padding: 1rem 1.5rem;
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0.5rem 1.5rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-image: linear-gradient(270deg, var(--orange) 29%, var(--light-orange) 99%);
+            border-color: var(--orange);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: #ffffff;
+        }
+
+        .btn-secondary:hover {
+            background-image: linear-gradient(270deg, var(--orange) 29%, var(--light-orange) 99%);
+            border-color: var(--orange);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .table {
+            background-color: var(--table-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background-color: var(--table-header-bg);
+            color: var(--table-header-text);
+            font-weight: 500;
+            border: none;
+            padding: 1rem;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--table-hover);
+        }
+
+        .table td {
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+            border-color: var(--border-color);
+            color: var(--table-text);
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        }
+
+        .badge {
+            padding: 0.5rem 0.8rem;
+            font-weight: 500;
+            border-radius: 6px;
+        }
+
+        footer {
+            background-color: var(--footer-bg);
+            color: var(--footer-text);
+            padding: 1.5rem 0;
+            margin-top: 3rem;
+        }
+
+        /* Icons in the interface */
+        .fa, .fas, .far, .fab {
+            color: var(--icon-color);
+            transition: color 0.3s ease;
+        }
+        
+        /* Status indicators */
+        .status-success {
+            color: var(--success-color) !important;
+            font-weight: 600;
+        }
+        
+        .status-failed {
+            color: var(--danger-color) !important;
+            font-weight: 600;
+        }
+        
+        .status-warning {
+            color: var(--warning-color) !important;
+            font-weight: 600;
+        }
+        
+        /* Command and output styles */
+        .command-area {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            background-color: var(--command-bg);
+            color: #ffffff;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .output-area {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            background-color: var(--output-bg);
+            color: #ffffff;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* Quick actions section */
+        .quick-actions {
+            background-color: var(--medium-blue);
+            color: #ffffff;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .quick-action-button {
+            border-radius: 8px;
+            padding: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-action-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        /* Theme toggle button styles */
+        .theme-toggle {
+            cursor: pointer;
+            width: 45px;
+            height: 25px;
+            border-radius: 25px;
+            background-color: var(--card-bg);
+            position: relative;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+            display: inline-block;
+        }
+
+        .theme-toggle::after {
+            content: '';
+            position: absolute;
+            width: 19px;
+            height: 19px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+        }
+
+        [data-bs-theme="dark"] .theme-toggle::after {
+            transform: translateX(20px);
+        }
+
+        .theme-toggle .fa-sun, .theme-toggle .fa-moon {
+            position: absolute;
+            top: 5px;
+            font-size: 12px;
+            z-index: 1;
+            color: var(--cream-color);
+        }
+
+        .theme-toggle .fa-sun {
+            left: 5px;
+        }
+
+        .theme-toggle .fa-moon {
+            right: 5px;
+        }
+        
+        /* Custom animation for loading */
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .card {
+                margin-bottom: 1rem;
+            }
+            
+            .table-responsive {
+                border-radius: 10px;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <i class="fas fa-network-wired me-2"></i><span style="color: var(--primary-text);">Devices Management</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'home' %}">
+                            <i class="fas fa-home me-1"></i>Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/devices/' in request.path %}active{% endif %}" href="{% url 'devices' %}">
+                            <i class="fas fa-server me-1"></i>Devices
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/configure/' in request.path %}active{% endif %}" href="{% url 'configure' %}">
+                            <i class="fas fa-cog me-1"></i>Configure
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/verify/' in request.path %}active{% endif %}" href="{% url 'verify_config' %}">
+                            <i class="fas fa-check-circle me-1"></i>Verify
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if '/log/' in request.path %}active{% endif %}" href="{% url 'log' %}">
+                            <i class="fas fa-list me-1"></i>Logs
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav align-items-center">
+                    <li class="nav-item">
+                        <span class="nav-link">
+                            <i class="fas fa-user me-1"></i>{{ user.username }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <div class="theme-toggle" id="themeToggle">
+                            <i class="fas fa-sun"></i>
+                            <i class="fas fa-moon"></i>
+                        </div>
+                    </li>
+                    <li class="nav-item ms-2">
+                        <a class="nav-link" href="{% url 'logout' %}">
+                            <i class="fas fa-sign-out-alt me-1"></i>Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mb-5">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-5 py-3">
+        <div class="container text-center">
+            <span>© {% now "Y" %} DevicesManagement. All rights reserved.</span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Theme toggle script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for saved theme preference or use device preference
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-bs-theme', 'light');
+            }
+            
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('themeToggle');
+            
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                
+                document.documentElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

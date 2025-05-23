@@ -1,0 +1,265 @@
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - DevicesManagement</title>
+    <!-- Favicon -->
+    <link rel="icon" href="https://nexa.net.id/favicon.ico" type="image/x-icon">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            /* Custom color palette - Nexa colors */
+            --dark-blue: #1C2255;
+            --light-blue: #71CFEB;
+            --medium-blue: #3763AF;
+            --orange: #F37021;
+            --light-orange: #FD9612;
+            
+            /* Light theme (default) */
+            --primary-color: var(--dark-blue);
+            --secondary-color: var(--medium-blue);
+            --accent-color: var(--orange);
+            --bg-color: #F5F5F5;
+            --text-color: #333333;
+            --card-bg: #ffffff;
+            --card-text: #333333;
+            --icon-color: var(--dark-blue);
+            --border-color: rgba(0,0,0,0.1);
+        }
+
+        [data-bs-theme="dark"] {
+            /* Dark theme */
+            --primary-color: var(--light-blue);
+            --secondary-color: var(--medium-blue);
+            --accent-color: var(--orange);
+            --bg-color: #1a1a1a;
+            --text-color: #f5f5f5;
+            --card-bg: #2c2c2c;
+            --card-text: #f5f5f5;
+            --icon-color: var(--light-blue);
+            --border-color: rgba(255,255,255,0.1);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .card-body {
+            padding: 3rem !important;
+        }
+
+        .brand-logo {
+            width: 150px;
+            height: 80px;
+            margin: 0 auto 1.5rem auto;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .form-control {
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        .input-group-text {
+            background-color: var(--secondary-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px 0 0 10px;
+            padding: 0 1.2rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 10px;
+            padding: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-image: linear-gradient(270deg, var(--orange) 29%, var(--light-orange) 99%);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(243, 112, 33, 0.3);
+        }
+
+        /* Theme toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            width: 45px;
+            height: 25px;
+            border-radius: 25px;
+            background-color: var(--card-bg);
+            position: relative;
+            transition: all 0.3s ease;
+            display: inline-block;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .theme-toggle::after {
+            content: '';
+            position: absolute;
+            width: 19px;
+            height: 19px;
+            border-radius: 50%;
+            background-color: var(--accent-color);
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+        }
+
+        [data-bs-theme="dark"] .theme-toggle::after {
+            transform: translateX(20px);
+        }
+
+        /* Icons in the interface */
+        .fa, .fas, .far, .fab {
+            color: var(--icon-color);
+            transition: color 0.3s ease;
+        }
+        
+        .theme-toggle .fa-sun, .theme-toggle .fa-moon {
+            position: absolute;
+            top: 5px;
+            font-size: 12px;
+            z-index: 1;
+            color: #ffffff;
+        }
+
+        .theme-toggle .fa-sun {
+            left: 5px;
+        }
+
+        .theme-toggle .fa-moon {
+            right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Theme Toggle Button -->
+    <div class="theme-toggle" id="themeToggle">
+        <i class="fas fa-sun"></i>
+        <i class="fas fa-moon"></i>
+    </div>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="brand-logo">
+                                <img src="https://minio.nexa.net.id/nexa/nexa_logo_1500.png"  width="150" height="80">
+                            </div>
+                            <h2 class="fw-bold mbs-2">Devices Management</h2>
+                            <p class="mb-4">Please login to continue</p>
+                        </div>
+
+                        {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="mb-4">
+                                <label for="username" class="form-label fw-medium">Username</label>
+                                <div class="input-group mb-3">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" required>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="password" class="form-label fw-medium">Password</label>
+                                <div class="input-group mb-3">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 py-3 mt-2">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <p>&copy; {% now "Y" %} Devices Management. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Theme toggle script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for saved theme preference or use device preference
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-bs-theme', 'light');
+            }
+            
+            // Theme toggle functionality
+            const themeToggle = document.getElementById('themeToggle');
+            
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                
+                document.documentElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+
+{% block title %}Devices - AutomateIP{% endblock %}
+
+{% block content %}
+<!-- Debug info -->
+<div class="d-none">
+    Debug Info:
+    Total devices: {{ all_device|length }}
+    Is all_device empty? {% if all_device %}No{% else %}Yes{% endif %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <h1 class="display-4">
+            <i class="fas fa-server me-2"></i>Devices ({{ all_device|length }})
+        </h1>
+        <div class="btn-group">
+            <a href="{% url 'mass_add_device' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add Devices
+            </a>
+            <button type="button" class="btn btn-warning" id="toggleEditMode">
+                <i class="fas fa-edit me-2"></i>Edit Mode
+            </button>
+            <button type="button" class="btn btn-danger" id="toggleDeleteMode">
+                <i class="fas fa-trash me-2"></i>Delete Mode
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Mode Form -->
+<form method="POST" action="{% url 'edit_devices' %}" id="editForm" style="display: none;">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <i class="fas fa-edit me-2"></i>
+                        Edit Mode Active - Select devices to edit
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-dark btn-sm" id="selectAllEdit">
+                            <i class="fas fa-check-square me-1"></i>Select All
+                        </button>
+                        <button type="submit" class="btn btn-warning btn-sm">
+                            <i class="fas fa-save me-1"></i>Save Changes
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="cancelEdit">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="hostname" placeholder="New Hostname">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="username" placeholder="New Username">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="password" class="form-control" name="password" placeholder="New Password">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="number" class="form-control" name="ssh_port" placeholder="New SSH Port">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="number" class="form-control" name="api_port" placeholder="New API Port">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Delete Mode Form -->
+<form method="POST" action="{% url 'hapus_perangkat' %}" id="deleteForm" style="display: none;">
+    {% csrf_token %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Delete Mode Active - Select devices to delete
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-dark btn-sm" id="selectAllDelete">
+                            <i class="fas fa-check-square me-1"></i>Select All
+                        </button>
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash me-1"></i>Delete Selected
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="cancelDelete">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th class="select-column" style="display: none; width: 40px;">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                                    </div>
+                                </th>
+                                <th>Hostname</th>
+                                <th>IP Address</th>
+                                <th>Vendor</th>
+                                <th>Username</th>
+                                <th>API Port</th>
+                                <th>SSH Port</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in all_device %}
+                            <tr>
+                                <td class="select-column" style="display: none;">
+                                    <div class="form-check">
+                                        <input type="checkbox" 
+                                               class="form-check-input device-checkbox" 
+                                               name="devices" 
+                                               value="{{ device.id }}" 
+                                               form="editForm"
+                                               data-hostname="{{ device.hostname }}"
+                                               data-ip="{{ device.ip_address }}"
+                                               data-vendor="{{ device.vendor }}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if device.vendor.lower == 'mikrotik' %}
+                                            <i class="fas fa-network-wired text-primary me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-server text-secondary me-2"></i>
+                                        {% endif %}
+                                        {{ device.hostname }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ device.ip_address }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if device.vendor.lower == 'mikrotik' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                        {{ device.vendor }}
+                                    </span>
+                                </td>
+                                <td>{{ device.username }}</td>
+                                <td>
+                                    {% if device.api_port %}
+                                        <span class="badge bg-success">{{ device.api_port }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if device.ssh_port %}
+                                        <span class="badge bg-success">{{ device.ssh_port }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">22</span>
+                                    {% endif %}
+                                </td>
+                                <td class="action-column">
+                                    <div class="btn-group">
+                                        <a href="{% url 'configure' %}?device={{ device.id }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-cog"></i>
+                                        </a>
+                                        <a href="{% url 'verify_config' %}?device={{ device.id }}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-check-circle"></i>
+                                        </a>
+                                        <a href="{% url 'hapus_perangkat' %}?device={{ device.id }}" class="btn btn-sm btn-outline-danger delete-single" 
+                                           onclick="return confirm('Are you sure you want to delete this device?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="py-4">
+                                        <i class="fas fa-info-circle text-muted mb-2" style="font-size: 2rem;"></i>
+                                        <p class="mb-0">No devices found. Add some devices to get started.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    {% for message in messages %}
+    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header {% if message.tags %}bg-{{ message.tags }}{% endif %} text-white">
+            <strong class="me-auto">Notification</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            {{ message }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editForm = document.getElementById('editForm');
+    const deleteForm = document.getElementById('deleteForm');
+    const toggleEditMode = document.getElementById('toggleEditMode');
+    const toggleDeleteMode = document.getElementById('toggleDeleteMode');
+    const cancelEdit = document.getElementById('cancelEdit');
+    const cancelDelete = document.getElementById('cancelDelete');
+    const selectAllEdit = document.getElementById('selectAllEdit');
+    const selectAllDelete = document.getElementById('selectAllDelete');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const selectColumns = document.querySelectorAll('.select-column');
+    const actionColumns = document.querySelectorAll('.action-column');
+    const deleteSingleButtons = document.querySelectorAll('.delete-single');
+    const deviceCheckboxes = document.querySelectorAll('.device-checkbox');
+
+    let currentMode = null;
+
+    // Toggle edit mode
+    toggleEditMode.addEventListener('click', function() {
+        currentMode = 'edit';
+        editForm.style.display = 'block';
+        deleteForm.style.display = 'none';
+        selectColumns.forEach(col => col.style.display = 'table-cell');
+        actionColumns.forEach(col => col.style.display = 'none');
+        deleteSingleButtons.forEach(btn => btn.style.display = 'none');
+        toggleDeleteMode.style.display = 'none';
+        toggleEditMode.style.display = 'none';
+        
+        // Reset checkboxes and set their form
+        deviceCheckboxes.forEach(cb => {
+            cb.checked = false;
+            cb.setAttribute('form', 'editForm');  // Explicitly set form attribute
+        });
+    });
+
+    // Toggle delete mode
+    toggleDeleteMode.addEventListener('click', function() {
+        currentMode = 'delete';
+        deleteForm.style.display = 'block';
+        editForm.style.display = 'none';
+        selectColumns.forEach(col => col.style.display = 'table-cell');
+        actionColumns.forEach(col => col.style.display = 'none');
+        deleteSingleButtons.forEach(btn => btn.style.display = 'none');
+        toggleDeleteMode.style.display = 'none';
+        toggleEditMode.style.display = 'none';
+        
+        // Reset checkboxes and set their form
+        deviceCheckboxes.forEach(cb => {
+            cb.checked = false;
+            cb.setAttribute('form', 'deleteForm');  // Explicitly set form attribute
+        });
+    });
+
+    // Cancel edit mode
+    cancelEdit.addEventListener('click', function() {
+        currentMode = null;
+        editForm.style.display = 'none';
+        selectColumns.forEach(col => col.style.display = 'none');
+        actionColumns.forEach(col => col.style.display = 'table-cell');
+        deleteSingleButtons.forEach(btn => btn.style.display = 'inline-block');
+        toggleDeleteMode.style.display = 'inline-block';
+        toggleEditMode.style.display = 'inline-block';
+        selectAllCheckbox.checked = false;
+        deviceCheckboxes.forEach(cb => cb.checked = false);
+    });
+
+    // Cancel delete mode
+    cancelDelete.addEventListener('click', function() {
+        currentMode = null;
+        deleteForm.style.display = 'none';
+        selectColumns.forEach(col => col.style.display = 'none');
+        actionColumns.forEach(col => col.style.display = 'table-cell');
+        deleteSingleButtons.forEach(btn => btn.style.display = 'inline-block');
+        toggleDeleteMode.style.display = 'inline-block';
+        toggleEditMode.style.display = 'inline-block';
+        selectAllCheckbox.checked = false;
+        deviceCheckboxes.forEach(cb => cb.checked = false);
+    });
+
+    // Select all checkbox in table header
+    selectAllCheckbox.addEventListener('change', function() {
+        deviceCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateSelectAllButtonText();
+    });
+
+    // Individual checkbox change
+    deviceCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const allChecked = Array.from(deviceCheckboxes).every(cb => cb.checked);
+            const anyChecked = Array.from(deviceCheckboxes).some(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
+            selectAllCheckbox.indeterminate = anyChecked && !allChecked;
+            updateSelectAllButtonText();
+        });
+    });
+
+    // Select all button (both edit and delete modes)
+    function updateSelectAllButtonText() {
+        const allChecked = Array.from(deviceCheckboxes).every(cb => cb.checked);
+        const button = currentMode === 'edit' ? selectAllEdit : selectAllDelete;
+        if (button) {
+            button.innerHTML = allChecked ? 
+                '<i class="fas fa-square me-1"></i>Unselect All' : 
+                '<i class="fas fa-check-square me-1"></i>Select All';
+        }
+    }
+
+    // Select all buttons click handlers
+    [selectAllEdit, selectAllDelete].forEach(button => {
+        button?.addEventListener('click', function() {
+            const allChecked = Array.from(deviceCheckboxes).every(cb => cb.checked);
+            deviceCheckboxes.forEach(cb => cb.checked = !allChecked);
+            selectAllCheckbox.checked = !allChecked;
+            selectAllCheckbox.indeterminate = false;
+            updateSelectAllButtonText();
+        });
+    });
+
+    // Form submission validation
+    editForm.addEventListener('submit', function(e) {
+        const selectedDevices = Array.from(deviceCheckboxes).filter(cb => cb.checked);
+        
+        // Debug log
+        console.log('Selected devices:', selectedDevices.map(cb => cb.value));
+        
+        if (selectedDevices.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one device to edit.');
+            return;
+        }
+        
+        const hasChanges = ['hostname', 'username', 'password', 'ssh_port', 'api_port']
+            .some(field => this.elements[field].value.trim() !== '');
+            
+        if (!hasChanges) {
+            e.preventDefault();
+            alert('Please enter at least one field to update.');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to update ${selectedDevices.length} device(s)?`)) {
+            e.preventDefault();
+        }
+    });
+
+    // Delete form submission validation
+    deleteForm.addEventListener('submit', function(e) {
+        const selectedDevices = Array.from(deviceCheckboxes).filter(cb => cb.checked);
+        if (selectedDevices.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one device to delete.');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to delete ${selectedDevices.length} device(s)?`)) {
+            e.preventDefault();
+        }
+    });
+
+    // Auto-hide toasts after 5 seconds
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(toast => {
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}
