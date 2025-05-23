@@ -555,19 +555,32 @@ def configure_ssh(request):
 @login_required(login_url='login')
 def devices(request):
     try:
+        # Get all devices but don't access them yet
         devices = Device.objects.all()
-        device_count = devices.count()
-        print(f"DEBUG: Found {device_count} devices")
-        print(f"DEBUG: First device: {devices.first() if device_count > 0 else 'None'}")
         
+        # Create context with devices
         context = {"all_device": devices}
-        print(f"DEBUG: Context: {context}")
         
+        # Log instead of print for better production reliability
+        # Django will handle this properly even if stdout is unavailable
+        import logging
+        logger = logging.getLogger('django')
+        logger.debug(f"Found {devices.count()} devices")
+        
+        # Render the template with our devices context
         return render(request, "devices.html", context)
     except Exception as e:
-        print(f"ERROR in devices view: {str(e)}")
-        # Re-raise the exception to see it in the Django error page
-        raise
+        # Log the error instead of print
+        import logging
+        logger = logging.getLogger('django')
+        logger.error(f"Error in devices view: {str(e)}")
+        
+        # Provide a more graceful error handling
+        context = {
+            "all_device": [],
+            "error_message": "There was a problem loading the devices. Please try again later."
+        }
+        return render(request, "devices.html", context)
 
 
 def mass_add_device(request):
