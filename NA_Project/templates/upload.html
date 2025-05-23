@@ -60,19 +60,26 @@
                 </h5>
             </div>
             <div class="card-body">
+                <!-- Upload Area - for uploading files -->
                 <form method="post" enctype="multipart/form-data" id="uploadForm">
                     {% csrf_token %}
                     <input type="hidden" name="upload" value="1">
                     <div class="upload-area" id="dropZone">
                         <input type="file" name="file" id="fileInput" accept=".xlsx,.xls" class="d-none" required>
-                        <div id="uploadPrompt" {% if uploaded_file %}class="d-none"{% endif %}>
+                        
+                        <!-- Upload Prompt - shown when no file is uploaded -->
+                        {% if not uploaded_file %}
+                        <div id="uploadPrompt">
                             <i class="fas fa-cloud-upload-alt upload-icon"></i>
                             <h4>Drag & Drop your Excel file here</h4>
                             <p class="text-muted mb-3">or</p>
-                            <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            <button type="button" class="btn btn-primary" id="browseButton">
                                 <i class="fas fa-folder-open me-2"></i>Browse Files
                             </button>
                         </div>
+                        {% endif %}
+                        
+                        <!-- Loading Indicator - shown during upload -->
                         <div id="loadingIndicator" class="d-none text-center">
                             <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
                                 <span class="visually-hidden">Loading...</span>
@@ -80,20 +87,34 @@
                             <h4>Uploading file...</h4>
                             <p class="text-muted">Please wait</p>
                         </div>
-                        <div id="fileInfo" {% if not uploaded_file %}class="d-none"{% endif %}>
+                        
+                        <!-- File Info - shown after successful upload -->
+                        {% if uploaded_file %}
+                        <div id="fileInfo">
                             <i class="fas fa-file-excel upload-icon text-success"></i>
-                            <h4 class="file-name" id="fileName">{{ uploaded_file|default:"filename.xlsx" }}</h4>
+                            <h4 class="file-name" id="fileName">{{ uploaded_file }}</h4>
                             <p class="text-muted mb-3">File uploaded successfully</p>
                         </div>
+                        {% else %}
+                        <div id="fileInfo" class="d-none">
+                            <i class="fas fa-file-excel upload-icon text-success"></i>
+                            <h4 class="file-name" id="fileName">filename.xlsx</h4>
+                            <p class="text-muted mb-3">File uploaded successfully</p>
+                        </div>
+                        {% endif %}
                     </div>
                 </form>
                 
                 {% if uploaded_file %}
                 <div class="mt-4 text-center">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Excel file uploaded successfully!</strong> Click the button below to process devices.
+                    </div>
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="process" value="1">
-                        <button type="submit" class="btn btn-success btn-lg">
+                        <button type="submit" class="btn btn-success btn-lg pulsate">
                             <i class="fas fa-cog me-2"></i>Process Devices
                         </button>
                     </form>
@@ -226,30 +247,49 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Get all DOM elements we need to work with
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
+    const browseButton = document.getElementById('browseButton');
     const uploadPrompt = document.getElementById('uploadPrompt');
     const fileInfo = document.getElementById('fileInfo');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const fileName = document.getElementById('fileName');
     const form = document.getElementById('uploadForm');
+    
+    // Set up the browse button click handler
+    if (browseButton) {
+        browseButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fileInput.click();
+        });
+    }
 
-    // Drag & Drop functionality
+    // Drag & Drop functionality - prevent defaults
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
+        if (dropZone) {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        }
     });
 
-    function preventDefaults (e) {
+    function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
     }
 
+    // Add highlighting when dragging over drop zone
     ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, highlight, false);
+        if (dropZone) {
+            dropZone.addEventListener(eventName, highlight, false);
+        }
     });
 
+    // Remove highlighting when leaving drop zone or after drop
     ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, unhighlight, false);
+        if (dropZone) {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        }
     });
 
     function highlight(e) {
@@ -260,53 +300,69 @@ document.addEventListener('DOMContentLoaded', function() {
         dropZone.classList.remove('dragover');
     }
 
-    dropZone.addEventListener('drop', handleDrop, false);
+    // Handle file drop event
+    if (dropZone) {
+        dropZone.addEventListener('drop', handleDrop, false);
+    }
 
     function handleDrop(e) {
         const dt = e.dataTransfer;
         const files = dt.files;
-        handleFiles(files);
+        if (files && files.length > 0) {
+            processSelectedFile(files[0]);
+        }
     }
 
-    fileInput.addEventListener('change', function(e) {
-        handleFiles(e.target.files);
-    });
-
-    // Only allow clicking in the dropzone if we're in upload prompt state
-    dropZone.addEventListener('click', function() {
-        if (!uploadPrompt.classList.contains('d-none')) {
-            fileInput.click();
-        }
-    });
-
-    function handleFiles(files) {
-        if (files.length > 0) {
-            const file = files[0];
-            if (file.name.match(/\.(xlsx|xls)$/)) {
-                // Show loading indicator
-                uploadPrompt.classList.add('d-none');
-                fileInfo.classList.add('d-none');
-                loadingIndicator.classList.remove('d-none');
-                
-                // Automatically submit the form
-                setTimeout(function() {
-                    form.submit();
-                }, 500); // Short delay to show loading indicator
-            } else {
-                alert('Please upload an Excel file (.xlsx or .xls)');
-                fileInput.value = '';
+    // Handle file selection via file input
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files.length > 0) {
+                processSelectedFile(this.files[0]);
             }
+        });
+    }
+
+    // Process the selected file and prepare for upload
+    function processSelectedFile(file) {
+        if (!file) return;
+        
+        // Check if it's an Excel file
+        if (file.name.match(/\.(xlsx|xls)$/)) {
+            // Show loading indicator
+            if (uploadPrompt) uploadPrompt.classList.add('d-none');
+            if (fileInfo) fileInfo.classList.add('d-none');
+            if (loadingIndicator) loadingIndicator.classList.remove('d-none');
+            
+            // Set the filename
+            if (fileName) fileName.textContent = file.name;
+            
+            // Submit the form after a short delay
+            setTimeout(function() {
+                if (form) form.submit();
+            }, 300);
+        } else {
+            alert('Please upload an Excel file (.xlsx or .xls)');
+            if (fileInput) fileInput.value = '';
         }
     }
 
-    // Form submission validation
-    form.addEventListener('submit', function(e) {
-        if (!fileInput.files.length) {
-            e.preventDefault();
-            alert('Please select a file to upload.');
-            return false;
-        }
-    });
+    // Add animation for the Process button
+    const pulsateButtons = document.querySelectorAll('.pulsate');
+    if (pulsateButtons.length > 0) {
+        // Add a style for pulsating effect
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulsate {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+                70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+            }
+            .pulsate {
+                animation: pulsate 2s infinite;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 });
 </script>
 {% endblock %}
