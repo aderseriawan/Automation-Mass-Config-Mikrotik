@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load app_filters %}
 
 {% block title %}Mass Add Devices - AutomateIP{% endblock %}
 
@@ -61,9 +62,10 @@
             <div class="card-body">
                 <form method="post" enctype="multipart/form-data" id="uploadForm">
                     {% csrf_token %}
+                    <input type="hidden" name="upload" value="1">
                     <div class="upload-area" id="dropZone">
                         <input type="file" name="file" id="fileInput" accept=".xlsx,.xls" class="d-none" required>
-                        <div id="uploadPrompt">
+                        <div id="uploadPrompt" {% if uploaded_file %}class="d-none"{% endif %}>
                             <i class="fas fa-cloud-upload-alt upload-icon"></i>
                             <h4>Drag & Drop your Excel file here</h4>
                             <p class="text-muted mb-3">or</p>
@@ -71,16 +73,38 @@
                                 <i class="fas fa-folder-open me-2"></i>Browse Files
                             </button>
                         </div>
-                        <div id="fileInfo" class="d-none">
+                        <div id="loadingIndicator" class="d-none text-center">
+                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <h4>Uploading file...</h4>
+                            <p class="text-muted">Please wait</p>
+                        </div>
+                        <div id="fileInfo" {% if not uploaded_file %}class="d-none"{% endif %}>
                             <i class="fas fa-file-excel upload-icon text-success"></i>
-                            <h4 class="file-name" id="fileName">filename.xlsx</h4>
-                            <p class="text-muted mb-3">Click to change file</p>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-upload me-2"></i>Upload and Process
-                            </button>
+                            <h4 class="file-name" id="fileName">{{ uploaded_file|default:"filename.xlsx" }}</h4>
+                            <p class="text-muted mb-3">File uploaded successfully</p>
                         </div>
                     </div>
                 </form>
+                
+                {% if uploaded_file %}
+                <div class="mt-4 text-center">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="process" value="1">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-cog me-2"></i>Process Devices
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+                
+                {% if error %}
+                <div class="alert alert-danger mt-3">
+                    <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -206,6 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('fileInput');
     const uploadPrompt = document.getElementById('uploadPrompt');
     const fileInfo = document.getElementById('fileInfo');
+    const loadingIndicator = document.getElementById('loadingIndicator');
     const fileName = document.getElementById('fileName');
     const form = document.getElementById('uploadForm');
 
@@ -247,17 +272,26 @@ document.addEventListener('DOMContentLoaded', function() {
         handleFiles(e.target.files);
     });
 
+    // Only allow clicking in the dropzone if we're in upload prompt state
     dropZone.addEventListener('click', function() {
-        fileInput.click();
+        if (!uploadPrompt.classList.contains('d-none')) {
+            fileInput.click();
+        }
     });
 
     function handleFiles(files) {
         if (files.length > 0) {
             const file = files[0];
             if (file.name.match(/\.(xlsx|xls)$/)) {
-                fileName.textContent = file.name;
+                // Show loading indicator
                 uploadPrompt.classList.add('d-none');
-                fileInfo.classList.remove('d-none');
+                fileInfo.classList.add('d-none');
+                loadingIndicator.classList.remove('d-none');
+                
+                // Automatically submit the form
+                setTimeout(function() {
+                    form.submit();
+                }, 500); // Short delay to show loading indicator
             } else {
                 alert('Please upload an Excel file (.xlsx or .xls)');
                 fileInput.value = '';

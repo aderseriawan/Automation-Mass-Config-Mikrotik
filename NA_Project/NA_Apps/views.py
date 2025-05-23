@@ -584,52 +584,142 @@ def devices(request):
 
 
 def mass_add_device(request):
-    if request.method == "POST":
+    # Initialize context
+    context = {
+        "form": UploadFileForm(),
+    }
+    
+    # Handle file upload
+    if request.method == "POST" and "upload" in request.POST:
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            df = pd.read_excel(request.FILES["file"])
+            # Save the file temporarily
+            file_path = handle_uploaded_file(request.FILES["file"])
+            
+            try:
+                # Verify file can be read as Excel
+                df = pd.read_excel(file_path)
+                
+                # Save to session for processing later
+                request.session['uploaded_file_path'] = file_path
+                filename = request.FILES["file"].name
+                request.session['uploaded_file_name'] = filename
+                
+                # Update context
+                context.update({
+                    "uploaded_file": filename,
+                })
+                
+            except Exception as e:
+                # Log error using logger instead of print
+                import logging
+                logger = logging.getLogger('django')
+                logger.error(f"Error reading Excel file: {str(e)}")
+                
+                context.update({
+                    "error": f"Error reading Excel file: {str(e)}"
+                })
+        else:
+            context.update({"form": form})
+    
+    # Process uploaded file
+    elif request.method == "POST" and "process" in request.POST:
+        file_path = request.session.get('uploaded_file_path')
+        if file_path:
+            try:
+                df = pd.read_excel(file_path)
+                success_count = 0
+                error_count = 0
+                
+                with transaction.atomic():
+                    for _, row in df.iterrows():
+                        try:
+                            # Ensure password is a string
+                            password = str(row['Password']).strip()
+                            
+                            Device.objects.update_or_create(
+                                ip_address=row["IP"],
+                                defaults={
+                                    'hostname': row["Hostname"],
+                                    'username': row["Username"],
+                                    'password': password,
+                                    'vendor': row["Vendor"],
+                                    'ssh_port': row.get("SSH Port", 22),
+                                    'api_port': row.get("API Port", 8728),
+                                }
+                            )
+                            Log.objects.create(
+                                target=row["IP"],
+                                action="Add Device",
+                                status="Success",
+                                time=timezone.now(),
+                                messages="Device added successfully"
+                            )
+                            success_count += 1
+                        except Exception as e:
+                            # Log error using logger instead of print
+                            import logging
+                            logger = logging.getLogger('django')
+                            logger.error(f"Error adding device {row.get('IP', 'unknown')}: {str(e)}")
+                            
+                            Log.objects.create(
+                                target=row.get("IP", "unknown"),
+                                action="Add Device",
+                                status="Failed",
+                                time=timezone.now(),
+                                messages=str(e)
+                            )
+                            error_count += 1
+                
+                # Clean up the temporary file
+                import os
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    
+                # Clear session data
+                if 'uploaded_file_path' in request.session:
+                    del request.session['uploaded_file_path']
+                if 'uploaded_file_name' in request.session:
+                    del request.session['uploaded_file_name']
+                
+                from django.contrib import messages
+                messages.success(request, f"Processing complete! {success_count} devices added successfully, {error_count} failed.")
+                return redirect("device_logs")
+            except Exception as e:
+                context.update({
+                    "error": f"Error processing file: {str(e)}"
+                })
+        else:
+            context.update({
+                "error": "No file was uploaded. Please upload a file first."
+            })
+    
+    # Pass the uploaded filename to the template if it exists in session
+    if 'uploaded_file_name' in request.session:
+        context['uploaded_file'] = request.session['uploaded_file_name']
+    
+    return render(request, "upload.html", context)
 
-            with transaction.atomic():
-                for _, row in df.iterrows():
-                    try:
-                        # Debug print untuk melihat data yang akan dimasukkan
-                        print(f"Processing row: IP={row['IP']}, Password={row['Password']}")
-                        
-                        # Pastikan password adalah string
-                        password = str(row['Password']).strip()
-                        
-                        Device.objects.update_or_create(
-                            ip_address=row["IP"],
-                            defaults={
-                                'hostname': row["Hostname"],
-                                'username': row["Username"],
-                                'password': password,
-                                'vendor': row["Vendor"],
-                                'ssh_port': row.get("SSH Port", 22),
-                                'api_port': row.get("API Port", 8728),
-                            }
-                        )
-                        Log.objects.create(
-                            target=row["IP"],
-                            action="Add Device",
-                            status="Success",
-                            time=timezone.now(),
-                            messages="Device added successfully"
-                        )
-                    except Exception as e:
-                        print(f"Error adding device {row.get('IP', 'unknown')}: {str(e)}")
-                        Log.objects.create(
-                            target=row.get("IP", "unknown"),
-                            action="Add Device",
-                            status="Failed",
-                            time=timezone.now(),
-                            messages=str(e)
-                        )
-            return redirect("device_logs")
-    else:
-        form = UploadFileForm()
 
-    return render(request, "upload.html", {"form": form})
+def handle_uploaded_file(f):
+    """Save uploaded file to a temporary location and return the path"""
+    import os
+    import tempfile
+    from django.conf import settings
+    
+    # Create temp directory if it doesn't exist
+    temp_dir = os.path.join(settings.BASE_DIR, 'temp_uploads')
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    # Create a unique filename
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx', dir=temp_dir)
+    
+    # Save uploaded file to temp location
+    with open(temp_file.name, 'wb+') as destination:
+        for chunk in f.chunks():
+            destination.write(chunk)
+    
+    return temp_file.name
 
 
 def hapus_perangkat(request):
