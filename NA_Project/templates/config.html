@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block title %}{{ mode }} - DevicesManagement{% endblock %}
 
@@ -119,7 +119,7 @@
                                 </th>
                                 <th>IP Address</th>
                                 <th>Hostname</th>
-                                <th>Vendor</th>
+                                <th>Category</th>
                                 <th>Connection Details</th>
                             </tr>
                         </thead>
@@ -136,8 +136,8 @@
                                 <td>{{ device.ip_address }}</td>
                                 <td>{{ device.hostname|default:"-" }}</td>
                                 <td>
-                                    <span class="badge {% if device.vendor.lower == 'mikrotik' %}bg-primary{% else %}bg-secondary{% endif %}">
-                                        {{ device.vendor }}
+                                    <span class="badge bg-info">
+                                        {{ device.get_device_category_display }}
                                     </span>
                                 </td>
                                 <td>

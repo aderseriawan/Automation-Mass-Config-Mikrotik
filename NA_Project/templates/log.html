@@ -1,437 +1,489 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ log_type }} - DevicesManagement{% endblock %}
+{% block title %}Logs - DevicesManagement{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Status colors */
-    .status-success {
-        color: #4CAF50 !important;
-        font-weight: 600;
+    /* Theme Variables */
+    :root[data-theme="light"] {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --bg-tertiary: #e9ecef;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --border-color: #dee2e6;
+        --card-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        --hover-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        --accent-gradient: linear-gradient(135deg, #2193b0, #6dd5ed);
+        --danger-gradient: linear-gradient(135deg, #ff6b6b, #ff8585);
+        --command-bg: #f8f9fa;
+        --command-color: #212529;
+        --command-border: #e9ecef;
+        --success-bg: #d4edda;
+        --success-color: #155724;
+        --error-bg: #f8d7da;
+        --error-color: #721c24;
+        --input-bg: #ffffff;
+        --input-border: #ced4da;
+        --input-color: #495057;
     }
-    
-    .status-failed {
-        color: #F44336 !important;
-        font-weight: 600;
+
+    :root[data-theme="dark"] {
+        --bg-primary: #1a1a1a;
+        --bg-secondary: #2a2a2a;
+        --bg-tertiary: #333333;
+        --text-primary: #e0e0e0;
+        --text-secondary: #a0a0a0;
+        --border-color: rgba(255,255,255,0.1);
+        --card-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        --hover-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        --accent-gradient: linear-gradient(135deg, #2193b0, #6dd5ed);
+        --danger-gradient: linear-gradient(135deg, #ff453a, #ff6b6b);
+        --command-bg: #1a1a1a;
+        --command-color: #00ff9d;
+        --command-border: rgba(0,255,157,0.2);
+        --success-bg: rgba(0,255,157,0.15);
+        --success-color: #00ff9d;
+        --error-bg: rgba(255,69,58,0.15);
+        --error-color: #ff453a;
+        --input-bg: #333333;
+        --input-border: rgba(255,255,255,0.1);
+        --input-color: #e0e0e0;
     }
-    
-    .status-warning {
-        color: #FF9800 !important;
-        font-weight: 600;
+
+    body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
     }
-    
-    .command-output {
-        font-family: 'Courier New', Courier, monospace;
-        white-space: pre-wrap;
-        background-color: var(--dark-blue);
-        color: #ffffff;
-        padding: 1rem;
-        border-radius: 5px;
-        margin-bottom: 1rem;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    }
-    
+
     .log-entry {
         border: 1px solid var(--border-color);
-        border-radius: 10px;
-        margin-bottom: 1.5rem;
-        background-color: var(--card-bg);
-        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-        overflow: hidden;
-        transition: all 0.3s ease;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        background-color: var(--bg-secondary);
+        box-shadow: var(--card-shadow);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
     }
-    
+
     .log-entry:hover {
-        box-shadow: 0 5px 15px rgba(0,0,0,0.15);
         transform: translateY(-2px);
+        box-shadow: var(--hover-shadow);
     }
 
     .log-header {
-        padding: 0.75rem 1rem;
-        background-color: var(--secondary-color);
+        padding: 1rem;
+        background-color: var(--bg-tertiary);
         border-bottom: 1px solid var(--border-color);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        color: #ffffff;
+        border-radius: 12px 12px 0 0;
+        color: var(--text-primary);
+        transition: background-color 0.3s ease;
     }
 
     .log-body {
         padding: 1.25rem;
-        color: var(--text-color);
+        color: var(--text-primary);
+        transition: color 0.3s ease;
     }
 
     .log-command {
-        font-family: 'Courier New', Courier, monospace;
-        background-color: var(--orange);
-        color: #ffffff;
-        padding: 0.75rem;
-        border-radius: 6px;
-        margin-bottom: 0.75rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        font-family: 'Fira Code', monospace;
+        background-color: var(--command-bg);
+        color: var(--command-color);
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 0.75rem 0;
+        border: 1px solid var(--command-border);
+        transition: background-color 0.3s ease, color 0.3s ease;
     }
 
     .log-output {
-        font-family: 'Courier New', Courier, monospace;
-        background-color: var(--dark-blue);
-        color: #ffffff;
+        font-family: 'Fira Code', monospace;
+        background-color: var(--command-bg);
+        color: var(--text-primary);
         padding: 1rem;
-        border-radius: 6px;
+        border-radius: 8px;
         white-space: pre-wrap;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    
-    /* Improved button styling */
-    .btn-outline-secondary {
-        color: var(--text-color);
-        border-color: var(--border-color);
-    }
-    
-    .btn-outline-secondary:hover, 
-    .btn-outline-secondary.active {
-        background-color: var(--secondary-color);
-        border-color: var(--secondary-color);
-        color: #ffffff;
-    }
-    
-    /* Ensure contrast in dropdown menus */
-    .dropdown-menu {
-        background-color: var(--card-bg);
-        border-color: var(--border-color);
-    }
-    
-    .dropdown-item {
-        color: var(--text-color);
-    }
-    
-    .dropdown-item:hover,
-    .dropdown-item:focus,
-    .dropdown-item.active {
-        background-color: var(--secondary-color);
-        color: #ffffff;
-    }
-    
-    /* Better table styling */
-    .table {
-        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    .sort-link {
-        color: inherit;
-        text-decoration: none;
+    .status-badge {
+        font-size: 0.875rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    .sort-link:hover {
-        text-decoration: underline;
+    .status-success {
+        background-color: var(--success-bg);
+        color: var(--success-color);
+        border: 1px solid var(--success-color);
     }
 
-    .sort-icon {
-        font-size: 0.8em;
-        margin-left: 0.2em;
+    .status-error {
+        background-color: var(--error-bg);
+        color: var(--error-color);
+        border: 1px solid var(--error-color);
     }
 
-    .dropdown-menu {
-        min-width: 200px;
+    .summary-card {
+        background: var(--accent-gradient);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
     }
 
-    .dropdown-item {
+    .summary-stat {
+        text-align: center;
+        padding: 1.5rem;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: transform 0.2s ease;
+        color: white;
+    }
+
+    .summary-stat:hover {
+        transform: translateY(-5px);
+    }
+
+    .summary-stat h3 {
+        font-size: 2.5rem;
+        margin: 0;
+        font-weight: 600;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .summary-stat p {
+        margin: 0.5rem 0 0;
+        opacity: 0.9;
+        font-size: 1.1rem;
+        color: white;
+    }
+
+    .filter-card {
+        background-color: var(--bg-secondary);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+        border: 1px solid var(--border-color);
+        transition: background-color 0.3s ease;
+    }
+
+    .filter-card h5 {
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+    }
+
+    .form-select, .form-control {
+        background-color: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--input-color);
+        transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+    }
+
+    .form-select:focus, .form-control:focus {
+        background-color: var(--input-bg);
+        border-color: #2193b0;
+        color: var(--input-color);
+        box-shadow: 0 0 0 0.25rem rgba(33,147,176,0.25);
+    }
+
+    .form-label {
+        color: var(--text-primary);
+        font-weight: 500;
+        transition: color 0.3s ease;
+    }
+
+    .btn-primary {
+        background: var(--accent-gradient);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--accent-gradient);
+        transform: translateY(-1px);
+        color: white;
+    }
+
+    .refresh-btn {
+        background: var(--accent-gradient);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        color: white;
+        transition: transform 0.2s ease;
+    }
+
+    .refresh-btn:hover {
+        transform: translateY(-1px);
+        color: white;
+    }
+
+    .clear-logs-btn {
+        background: var(--danger-gradient);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        color: white;
+    }
+
+    .clear-logs-btn:hover {
+        transform: translateY(-1px);
+        opacity: 0.9;
+    }
+
+    .button-group {
         display: flex;
-        align-items: center;
-        padding: 0.5rem 1rem;
+        gap: 0.5rem;
     }
 
-    .dropdown-item i {
-        margin-right: 0.5rem;
-        width: 20px;
+    .card {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        transition: background-color 0.3s ease;
     }
 
-    .dropdown-divider {
-        margin: 0.3rem 0;
+    .card-header {
+        background-color: var(--bg-tertiary);
+        border-bottom: 1px solid var(--border-color);
+        border-radius: 16px 16px 0 0;
+        padding: 1.25rem;
+        transition: background-color 0.3s ease;
     }
 
-    .btn-group > .dropdown:not(:last-child) > .btn {
-        border-top-right-radius: 0;
-        border-bottom-right-radius: 0;
+    .card-header h5 {
+        color: var(--text-primary);
+        margin: 0;
+        font-weight: 600;
     }
 
-    .btn-group > .dropdown:not(:first-child) > .btn {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-        margin-left: -1px;
+    .text-muted {
+        color: var(--text-secondary) !important;
+        transition: color 0.3s ease;
+    }
+
+    .export-btn {
+        background: linear-gradient(135deg, #00b09b, #96c93d);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        color: white;
+        transition: transform 0.2s ease;
+    }
+
+    .export-btn:hover {
+        transform: translateY(-1px);
+        color: white;
     }
 </style>
 {% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>{{ log_type }}</h2>
-        <div class="btn-group">
-            <button type="button" class="btn btn-danger" id="clear-logs-btn">
-                <i class="fas fa-trash me-2"></i>Clear All Logs
-            </button>
-            <a href="{{ request.path }}" class="btn btn-primary">
-                <i class="fas fa-sync-alt me-2"></i>Refresh
-            </a>
-            <a href="{{ request.path }}?{{ request.GET.urlencode }}&export=excel" class="btn btn-success">
-                <i class="fas fa-file-excel me-2"></i>Export to Excel
-            </a>
-        </div>
-    </div>
-    
-    <!-- Filter bar -->
-    <div class="card mb-4">
-        <div class="card-body py-3">
-            <div class="row align-items-end">
-                <div class="col-md-4 mb-2 mb-md-0">
-                    <label for="hostname-filter" class="form-label mb-1">Hostname</label>
-                    <form id="hostname-filter-form" class="mb-0">
-                        <input type="text" class="form-control" id="hostname-filter" name="hostname" placeholder="Filter by hostname..." value="{{ hostname_filter }}">
-                    </form>
+    <!-- Summary Section -->
+    <div class="summary-card">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="summary-stat">
+                    <h3>{{ logs.count }}</h3>
+                    <p>Total Logs</p>
                 </div>
-                <div class="col-md-5 mb-2 mb-md-0">
-                    <label class="form-label mb-1">Status</label>
-                    <div class="d-flex" id="status-buttons">
-                        <button type="button" data-status="" class="status-btn btn btn-outline-secondary me-2 {% if not status_filter or status_filter == 'All Results' %}active{% endif %}">
-                            <i class="fas fa-list me-1"></i> All Results
-                        </button>
-                        <button type="button" data-status="Success" class="status-btn btn btn-outline-success me-2 {% if status_filter == 'Success' %}active{% endif %}">
-                            <i class="fas fa-check-circle me-1"></i> Success
-                        </button>
-                        <button type="button" data-status="Failed" class="status-btn btn btn-outline-danger me-2 {% if status_filter == 'Failed' %}active{% endif %}">
-                            <i class="fas fa-times-circle me-1"></i> Failed
-                        </button>
-                    </div>
-                    <input type="hidden" id="status-filter" value="{{ status_filter }}">
+            </div>
+            <div class="col-md-4">
+                <div class="summary-stat">
+                    <h3>{{ success_count }}</h3>
+                    <p>Successful</p>
                 </div>
-                <div class="col-md-3 d-flex justify-content-md-end align-items-center">
-                    <div class="badge bg-secondary p-2" id="log-summary" style="font-size: 1rem;">
-                        Summary: ✅ {{ success_count }} ❌ {{ failed_count }}
-                    </div>
+            </div>
+            <div class="col-md-4">
+                <div class="summary-stat">
+                    <h3>{{ error_count }}</h3>
+                    <p>Failed</p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Log list container that will be updated via HTMX -->
-    <div id="log-list-container">
 
-    {% if log_type == 'Configuration Logs' %}
-    <div class="mb-3">
-        <div class="btn-group">
-            <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
-               class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
-                Time
-                {% if current_sort == 'time' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
-        </div>
+    <!-- Filter Section -->
+    <div class="filter-card">
+        <h5><i class="fas fa-filter me-2"></i>Filter Logs</h5>
+        <form method="get" class="row g-3">
+            <div class="col-md-5">
+                <label for="hostname" class="form-label">Hostname/IP</label>
+                <select name="hostname" id="hostname" class="form-select">
+                    <option value="">All Devices</option>
+                    {% for hostname in all_hostnames %}
+                    <option value="{{ hostname }}" {% if selected_hostname == hostname %}selected{% endif %}>
+                        {{ hostname }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">All Status</option>
+                    {% for status in all_statuses %}
+                    <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>
+                        {{ status }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter me-2"></i>Filter
+                </button>
+            </div>
+        </form>
     </div>
-    {% endif %}
 
-    {% if log_type == 'Verify Logs' %}
-    <div class="mb-3">
-        <div class="btn-group">
-            <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
-               class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
-                Time
-                {% if current_sort == 'time' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
+    <!-- Logs Section -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Log Entries</h5>
+                <div class="button-group">
+                    <button class="btn refresh-btn" id="refreshLogs">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                    <button class="btn export-btn" id="exportLogs">
+                        <i class="fas fa-file-excel me-2"></i>Export to Excel
+                    </button>
+                    <button class="btn clear-logs-btn" id="clearAllLogs">
+                        <i class="fas fa-trash-alt me-2"></i>Clear All Logs
+                    </button>
+                </div>
+            </div>
         </div>
-    </div>
-    {% endif %}
-
-        {% include "partials/log_list.html" %}
+        <div class="card-body p-4">
+            <div id="log-list-container">
+                {% include "partials/log_list.html" %}
+            </div>
+        </div>
     </div>
 </div>
 
-{% block extra_js %}
-<!-- Include SweetAlert2 for confirmation dialogs -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<!-- Include HTMX for partial page updates -->
-<script src="https://unpkg.com/htmx.org@1.9.10"></script>
-
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Elements
-        const hostnameFilter = document.getElementById('hostname-filter');
-        const hostnameForm = document.getElementById('hostname-filter-form');
-        const statusFilter = document.getElementById('status-filter');
-        const statusButtons = document.querySelectorAll('.status-btn');
-        const logList = document.getElementById('log-list-container');
-        const clearLogsBtn = document.getElementById('clear-logs-btn');
+document.addEventListener('DOMContentLoaded', function() {
+    // Theme Handling
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
         
-        // Variables
-        let hostnameTimeout;
-        const debounceDelay = 500;
-        
-        // CSRF Token function
-        function getCsrfToken() {
-            const name = 'csrftoken';
-            let cookieValue = null;
+        // Force immediate update of all themed elements
+        document.body.style.backgroundColor = getComputedStyle(document.documentElement)
+            .getPropertyValue('--bg-primary');
             
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-        
-        // Refresh log list function
-        function refreshLogList() {
-            const hostname = hostnameFilter ? hostnameFilter.value.trim() : '';
-            const status = statusFilter ? statusFilter.value : '';
-            
-            console.log('Refreshing logs with filters - hostname:', hostname, 'status:', status);
-            
-            // Build URL
-            let url = `${window.location.pathname}?hostname=${encodeURIComponent(hostname)}`;
-            if (status) {
-                url += `&status=${encodeURIComponent(status)}`;
-            }
-            
-            console.log('Request URL:', url);
-            
-            // Use fetch instead of HTMX for more reliable updates
-            fetch(url, {
-                headers: {
-                    'HX-Request': 'true'
-                }
-            })
-            .then(function(response) {
-                return response.text();
-            })
-            .then(function(html) {
-                if (logList) {
-                    logList.innerHTML = html;
-                    console.log('Log list updated with filtered results');
-                    
-                    // Manually extract and update the summary counts from the response
-                    const summaryData = logList.querySelector('#summary-data');
-                    if (summaryData) {
-                        const successCount = summaryData.getAttribute('data-success');
-                        const failedCount = summaryData.getAttribute('data-failed');
-                        console.log('Extracted counts from response:', successCount, failedCount);
-                        
-                        // Update the summary badge
-                        const summaryBadge = document.getElementById('log-summary');
-                        if (summaryBadge) {
-                            summaryBadge.innerHTML = 'Summary: ✅ ' + successCount + ' ❌ ' + failedCount;
-                            console.log('Summary badge updated with filtered counts');
-                        }
-                    }
-                    
-                    // Execute any scripts in the response
-                    const scripts = logList.querySelectorAll('script');
-                    scripts.forEach(function(script) {
-                        const newScript = document.createElement('script');
-                        newScript.text = script.textContent;
-                        document.body.appendChild(newScript);
-                        document.body.removeChild(newScript);
-                    });
-                }
-            })
-            .catch(function(error) {
-                console.error('Error updating log list:', error);
+        // Force re-render of themed elements
+        document.querySelectorAll('[class*="bg-"], [class*="text-"], .card, .filter-card, .log-entry, .form-select, .form-control')
+            .forEach(el => {
+                el.style.display = 'none';
+                el.offsetHeight; // Force reflow
+                el.style.display = '';
             });
-        }
-        
-        // Hostname filter event listeners
-        if (hostnameFilter) {
-            hostnameFilter.addEventListener('input', function() {
-                clearTimeout(hostnameTimeout);
-                hostnameTimeout = setTimeout(refreshLogList, debounceDelay);
-            });
-        }
-        
-        // Hostname form submission
-        if (hostnameForm) {
-            hostnameForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                clearTimeout(hostnameTimeout);
-                refreshLogList();
-            });
-        }
-        
-        // Status button event listeners
-        if (statusButtons) {
-            statusButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const statusValue = this.getAttribute('data-status');
-                    console.log('Status button clicked:', statusValue);
-                    
-                    if (statusFilter) {
-                        statusFilter.value = statusValue;
-                    }
-                    
-                    statusButtons.forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    refreshLogList();
-                });
-            });
-        }
-        
-        // Clear logs button
-        if (clearLogsBtn) {
-            clearLogsBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                console.log('Clear logs button clicked');
-                
-                Swal.fire({
-                    title: 'Clear all logs?',
-                    text: 'This action cannot be undone!',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Yes, clear all logs!'
-                }).then(function(result) {
-                    if (result.isConfirmed) {
-                        console.log('Confirmation accepted');
-                        const csrfToken = getCsrfToken();
-                        
-                        fetch('{% url "clear_logs" %}', {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrfToken,
-                                'Content-Type': 'application/json'
-                            },
-                            cache: 'no-cache'
-                        })
-                        .then(function(response) {
-                            return response.json();
-                        })
-                        .then(function(data) {
-                            if (data.ok) {
-                                Swal.fire('Cleared!', 'All logs have been cleared.', 'success');
-                                refreshLogList();
-                            } else {
-                                Swal.fire('Error!', 'Failed to clear logs.', 'error');
-                            }
-                        })
-                        .catch(function(error) {
-                            console.error('Error:', error);
-                            Swal.fire('Error!', 'An error occurred while clearing logs.', 'error');
-                        });
-                    }
-                });
-            });
-        }
-        
-        // Initialize on page load
-        refreshLogList();
+    }
+
+    // Check for saved theme preference or default to system preference
+    const savedTheme = localStorage.getItem('theme') || 
+                      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(savedTheme);
+
+    // Listen for theme toggle changes
+    const themeToggle = document.querySelector('.theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('change', function(e) {
+            const newTheme = e.target.checked ? 'dark' : 'light';
+            setTheme(newTheme);
+        });
+    }
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        const newTheme = e.matches ? 'dark' : 'light';
+        setTheme(newTheme);
     });
+
+    // Clear All Logs functionality
+    const clearLogsBtn = document.getElementById('clearAllLogs');
+    if (clearLogsBtn) {
+        clearLogsBtn.addEventListener('click', async function() {
+            if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+                try {
+                    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+                    if (!csrfToken) {
+                        throw new Error('CSRF token not found');
+                    }
+
+                    const response = await fetch('/clear-logs/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrfToken,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ action: 'clear_all' })
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Server returned ${response.status}: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    if (data.success) {
+                        // Show success message
+                        alert(data.message || 'Logs cleared successfully');
+                        window.location.reload();
+                    } else {
+                        throw new Error(data.error || 'Unknown error occurred');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while clearing logs: ' + error.message);
+                }
+            }
+        });
+    }
+
+    // Refresh Logs functionality
+    const refreshBtn = document.getElementById('refreshLogs');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            window.location.reload();
+        });
+    }
+
+    // Export Logs with filters
+    const exportBtn = document.getElementById('exportLogs');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            // Get current URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const hostname = urlParams.get('hostname') || '';
+            const status = urlParams.get('status') || '';
+            
+            // Create export URL with filters
+            const exportUrl = `/export-logs/?hostname=${encodeURIComponent(hostname)}&status=${encodeURIComponent(status)}`;
+            
+            // Redirect to export URL
+            window.location.href = exportUrl;
+        });
+    }
+});
 </script>
-{% endblock %}
 {% endblock %}

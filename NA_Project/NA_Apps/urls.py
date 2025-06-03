@@ -21,8 +21,8 @@ urlpatterns = [
     path('verify_config_ssh/', views.verify_config_ssh, name='verify_config_ssh'),
     path('configure_ssh/', views.configure_ssh, name='configure_ssh'),
     path('log/', views.log, name='log'),
-    path('logs/', views.logs, name='logs'),
-    path('clear_logs/', views.clear_logs, name='clear_logs'),
+    path('clear-logs/', views.clear_logs, name='clear_logs'),
+    path('export-logs/', views.export_logs, name='export_logs'),
     path('mass_delete_log/', views.mass_delete_log, name='mass_delete_log'),
     path('devices/filter/', views.filter_devices, name='filter_devices'),
 ]

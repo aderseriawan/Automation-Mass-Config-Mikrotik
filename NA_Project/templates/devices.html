@@ -1,190 +1,207 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Devices – AutomateIP{% endblock %}
+{% block title %}Devices - DevicesManagement{% endblock %}
 
 {% block content %}
 <!-- Add CSRF Token -->
 {% csrf_token %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="display-5"><i class="fas fa-server me-2"></i>Devices ({{ total_devices }})</h1>
-
-  <!-- Add Device Button with Dropdown -->
-  <div class="btn-group">
-    <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-      <i class="fas fa-plus me-1"></i>Add Device
-    </button>
-    <ul class="dropdown-menu dropdown-menu-end">
-      <li>
-        <button class="dropdown-item" type="button" id="addSingleDeviceBtn">
-          <i class="fas fa-server me-1"></i>Single Add Device
-        </button>
-      </li>
-      <li><hr class="dropdown-divider"></li>
-      <li>
-        <a class="dropdown-item" href="{% url 'mass_add_device' %}">
-          <i class="fas fa-upload me-1"></i>Mass Add Device
-        </a>
-      </li>
-    </ul>
-  </div>
-</div>
-
-<!-- FILTERS -->
-<div class="row g-3 card card-body mb-4" id="filterForm">
-  <div class="col-md-5">
-    <label class="form-label fw-semibold">Device Category</label>
-    <select name="device_category" class="form-select" id="deviceCategoryFilter">
-      <option value="">All Categories</option>
-      {% for val,label in device_categories %}
-      <option value="{{ val }}" {% if filter.form.device_category.value == val %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-md-5">
-    <label class="form-label fw-semibold">Segment</label>
-    <select name="segment" class="form-select" id="segmentFilter">
-      <option value="">All Segments</option>
-      <option value="distribution" {% if filter.form.segment.value == 'distribution' %}selected{% endif %}>Distribution</option>
-      <option value="customer" {% if filter.form.segment.value == 'customer' %}selected{% endif %}>Customer</option>
-    </select>
-  </div>
-  <div class="col-md-2 d-grid align-items-end">
-    <button type="button" class="btn btn-primary" id="applyFilters"><i class="fas fa-search me-1"></i>Filter</button>
-  </div>
-</div>
-
-<!-- DELETE MODE CONTROLS -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <button type="button" class="btn btn-danger" id="toggleDeleteMode">
-      <i class="fas fa-trash me-1"></i>Delete Mode
-    </button>
-    <!-- BULK-DELETE BAR -->
-    <span id="bulkDeleteBar" class="d-none ms-2">
-      <button type="button" class="btn btn-danger" id="bulkDeleteBtn">
-        <i class="fas fa-trash me-1"></i>Delete Selected
-      </button>
-    </span>
-  </div>
-</div>
-
-<!-- TABLE -->
-<div class="table-responsive card card-body">
-  <table class="table table-hover align-middle">
-    <thead>
-      <tr>
-        <th class="select-col d-none" style="width: 40px;">
-          <input type="checkbox" id="selectAll" class="form-check-input">
-        </th>
-        <th>Hostname</th>
-        <th>IP Address</th>
-        <th>Username</th>
-        <th>Vendor</th>
-        <th>SSH Port</th>
-        <th>API Port</th>
-        <th>Segment</th>
-        <th>Category</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for d in all_device %}
-      <tr>
-        <td class="select-col d-none">
-          <input type="checkbox" class="device-cb form-check-input" value="{{ d.id }}">
-        </td>
-        <td>{{ d.hostname }}</td>
-        <td><span class="badge bg-primary">{{ d.ip_address }}</span></td>
-        <td>{{ d.username }}</td>
-        <td><span class="badge {% if d.vendor == 'mikrotik' %}bg-primary{% else %}bg-info{% endif %}">{{ d.vendor }}</span></td>
-        <td><span class="badge bg-success">{{ d.ssh_port|default:"22" }}</span></td>
-        <td><span class="badge bg-success">{{ d.api_port|default:"-" }}</span></td>
-        <td><span class="badge bg-info">{{ d.segmentation.get_segmentation_type_display|default:"-" }}</span></td>
-        <td><span class="badge bg-secondary">{{ d.get_device_category_display }}</span></td>
-        <td>
-          <button type="button" class="btn btn-sm btn-outline-primary edit-device-btn" data-id="{{ d.id }}">
-            <i class="fas fa-edit me-1"></i>Edit
-          </button>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="10" class="text-center py-5 text-muted">No devices – add some first.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-
-<!-- DEVICE MODAL -->
-<div class="modal fade" id="deviceModal" tabindex="-1" aria-labelledby="deviceModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deviceModalLabel">Add Device</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="deviceForm" novalidate class="row g-3">
-          <input type="hidden" id="device_id">
-          <!-- FIRST ROW -->
-          <div class="col-md-6">
-            <label class="form-label">IP Address</label>
-            <input id="ip_address" class="form-control" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Hostname</label>
-            <input id="hostname" class="form-control" required>
-          </div>
-          <!-- SECOND ROW -->
-          <div class="col-md-6">
-            <label class="form-label">Username</label>
-            <input id="username" class="form-control" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Password</label>
-            <input id="password" type="password" class="form-control" required>
-          </div>
-          <!-- THIRD ROW -->
-          <div class="col-md-6">
-            <label class="form-label">Vendor</label>
-            <select id="vendor" class="form-select" required>
-              <option value="mikrotik">Mikrotik</option><option value="cisco">Cisco</option>
-              <option value="juniper">Juniper</option><option value="cambium">Cambium</option>
-              <option value="ubiquiti">Ubiquiti</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Segment</label>
-            <select id="segment" class="form-select" required>
-              <option value="distribution">Distribution</option><option value="customer">Customer</option>
-            </select>
-          </div>
-          <!-- FOURTH ROW -->
-          <div class="col-md-12">
-            <label class="form-label">Device Category</label>
-            <select id="device_category" class="form-select" required>
-              {% for val,label in device_categories %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
-            </select>
-          </div>
-          <!-- FIFTH ROW -->
-          <div class="col-md-6">
-            <label class="form-label">API Port</label>
-            <input id="api_port" type="number" class="form-control" value="8728" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">SSH Port</label>
-            <input id="ssh_port" type="number" class="form-control" value="22" required>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-danger d-none" id="deleteDeviceBtn">Delete</button>
-        <button type="button" class="btn btn-primary" id="saveDeviceBtn">Save</button>
-      </div>
+<div class="container-fluid">
+    <!-- Header Section with Title and Add Device Button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-server me-2"></i>Devices ({{ total_devices }})
+        </h1>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                <i class="fas fa-plus me-1"></i>Add Device
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <button class="dropdown-item" type="button" id="addSingleDeviceBtn">
+                        <i class="fas fa-server me-1"></i>Single Add Device
+                    </button>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'mass_add_device' %}">
+                        <i class="fas fa-upload me-1"></i>Mass Add Device
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
-  </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end" id="filterForm">
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Device Category</label>
+                    <select name="device_category" class="form-select" id="deviceCategoryFilter">
+                        <option value="">All Categories</option>
+                        {% for val,label in device_categories %}
+                        <option value="{{ val }}" {% if filter.form.device_category.value == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Segment</label>
+                    <select name="segment" class="form-select" id="segmentFilter">
+                        <option value="">All Segments</option>
+                        <option value="distribution" {% if filter.form.segment.value == 'distribution' %}selected{% endif %}>Distribution</option>
+                        <option value="customer" {% if filter.form.segment.value == 'customer' %}selected{% endif %}>Customer</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="button" class="btn btn-primary" id="applyFilters">
+                        <i class="fas fa-search me-1"></i>Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Mode Controls -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <button type="button" class="btn btn-danger" id="toggleDeleteMode">
+                <i class="fas fa-trash me-1"></i>Delete Mode
+            </button>
+            <span id="bulkDeleteBar" class="d-none ms-2">
+                <button type="button" class="btn btn-danger" id="bulkDeleteBtn">
+                    <i class="fas fa-trash me-1"></i>Delete Selected
+                </button>
+            </span>
+        </div>
+    </div>
+
+    <!-- Devices Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th class="select-col d-none" style="width: 40px;">
+                                <input type="checkbox" id="selectAll" class="form-check-input">
+                            </th>
+                            <th>Hostname</th>
+                            <th>IP Address</th>
+                            <th>Username</th>
+                            <th>Vendor</th>
+                            <th>SSH Port</th>
+                            <th>API Port</th>
+                            <th>Segment</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in all_device %}
+                        <tr>
+                            <td class="select-col d-none">
+                                <input type="checkbox" class="device-cb form-check-input" value="{{ d.id }}">
+                            </td>
+                            <td>{{ d.hostname }}</td>
+                            <td><span class="badge bg-primary">{{ d.ip_address }}</span></td>
+                            <td>{{ d.username }}</td>
+                            <td><span class="badge {% if d.vendor == 'mikrotik' %}bg-primary{% else %}bg-info{% endif %}">{{ d.vendor }}</span></td>
+                            <td><span class="badge bg-success">{{ d.ssh_port|default:"22" }}</span></td>
+                            <td><span class="badge bg-success">{{ d.api_port|default:"-" }}</span></td>
+                            <td><span class="badge bg-info">{{ d.segmentation.get_segmentation_type_display|default:"-" }}</span></td>
+                            <td><span class="badge bg-secondary">{{ d.get_device_category_display }}</span></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary edit-device-btn" data-id="{{ d.id }}">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="10" class="text-center py-5 text-muted">No devices – add some first.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Modal -->
+    <div class="modal fade" id="deviceModal" tabindex="-1" aria-labelledby="deviceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deviceModalLabel">Add Device</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="deviceForm" novalidate class="row g-3">
+                        <input type="hidden" id="device_id">
+                        <!-- FIRST ROW -->
+                        <div class="col-md-6">
+                            <label class="form-label">IP Address</label>
+                            <input id="ip_address" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hostname</label>
+                            <input id="hostname" class="form-control" required>
+                        </div>
+                        <!-- SECOND ROW -->
+                        <div class="col-md-6">
+                            <label class="form-label">Username</label>
+                            <input id="username" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Password</label>
+                            <input id="password" type="password" class="form-control" required>
+                        </div>
+                        <!-- THIRD ROW -->
+                        <div class="col-md-6">
+                            <label class="form-label">Vendor</label>
+                            <select id="vendor" class="form-select" required>
+                                <option value="mikrotik">Mikrotik</option>
+                                <option value="cisco">Cisco</option>
+                                <option value="juniper">Juniper</option>
+                                <option value="cambium">Cambium</option>
+                                <option value="ubiquiti">Ubiquiti</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Segment</label>
+                            <select id="segment" class="form-select" required>
+                                <option value="distribution">Distribution</option>
+                                <option value="customer">Customer</option>
+                            </select>
+                        </div>
+                        <!-- FOURTH ROW -->
+                        <div class="col-md-12">
+                            <label class="form-label">Device Category</label>
+                            <select id="device_category" class="form-select" required>
+                                {% for val,label in device_categories %}
+                                <option value="{{ val }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- FIFTH ROW -->
+                        <div class="col-md-6">
+                            <label class="form-label">API Port</label>
+                            <input id="api_port" type="number" class="form-control" value="8728" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">SSH Port</label>
+                            <input id="ssh_port" type="number" class="form-control" value="22" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger d-none" id="deleteDeviceBtn">Delete</button>
+                    <button type="button" class="btn btn-primary" id="saveDeviceBtn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -207,11 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize all dropdowns
     document.querySelectorAll('.dropdown-toggle').forEach(function(element) {
         new bootstrap.Dropdown(element);
-    });
-    
-    // Add click listener to dropdown button
-    document.querySelector('.dropdown-toggle').addEventListener('click', function(e) {
-        console.log('Dropdown button clicked');
     });
 });
 </script>

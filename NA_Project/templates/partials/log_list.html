@@ -1,48 +1,51 @@
-{% for log in logs %}
-<div class="log-entry">
-    <div class="log-header">
-        <div>
-            <strong>{{ log.target }}</strong>
-            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-            <span style="color: var(--primary-color);">{{ log.hostname }}</span>
-            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-            <td><span class="badge {% if log.status == 'Success' %}bg-success{% elif log.status == 'Failed' %}bg-danger{% else %}bg-warning{% endif %} status-{{ log.status|lower }}">{{ log.status }}</span></td>
-            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-            <span style="color: var(--text-color);">{{ log.action }}</span>
-            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-            <small style="color: var(--text-color); opacity: 0.7;">{{ log.time|date:"Y-m-d H:i:s" }}</small>
-        </div>
-    </div>
-    <div class="log-body">
-        {% if log.messages %}
-        <div class="mb-3">
-            <strong>Messages:</strong>
-            <p class="mb-2" style="color: var(--text-color);"><span class="status-{{ log.status|lower }}">{{ log.messages }}</span></p>
-        </div>
-        {% endif %}
-        
-        {% if log.action == 'Verify' %}
-            {% if log.command %}
-            <div class="mb-3">
-                <strong style="color: var(--text-color);">Input Command:</strong>
-                <div class="log-command">{{ log.command }}</div>
+<!-- Log list container with data attributes for summary counts -->
+<div id="log-list-container" data-success-count="{{ success_count }}" data-error-count="{{ error_count }}">
+    {% if logs %}
+        {% for log in logs %}
+        <div class="log-entry">
+            <div class="log-header d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="fw-bold me-2">{{ log.target }}</span>
+                    <span class="status-badge {% if log.status == 'Success' %}status-success{% else %}status-error{% endif %}">
+                        {{ log.status }}
+                    </span>
+                </div>
+                <div class="text-muted">
+                    {{ log.time|date:"Y-m-d H:i:s" }}
+                </div>
             </div>
-            {% endif %}
-            
-            {% if log.output %}
-            <div>
-                <strong style="color: var(--text-color);">Output:</strong>
-                <div class="log-output">{{ log.output }}</div>
+            <div class="log-body">
+                <div class="mb-3">
+                    <strong>Action:</strong> {{ log.action }}
+                </div>
+                {% if log.command %}
+                <div class="mb-3">
+                    <strong>Command:</strong>
+                    <div class="log-command">{{ log.command }}</div>
+                </div>
+                {% endif %}
+                {% if log.output %}
+                <div class="mb-3">
+                    <strong>Output:</strong>
+                    <div class="log-output">{{ log.output }}</div>
+                </div>
+                {% endif %}
+                {% if log.messages %}
+                <div>
+                    <strong>Message:</strong>
+                    <div class="log-output">{{ log.messages }}</div>
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
-        {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No logs found</h5>
     </div>
+    {% endif %}
 </div>
-{% empty %}
-<div class="alert" style="background-color: var(--secondary-color); color: var(--dark-teal); border: none; border-radius: 10px;">
-    <i class="fas fa-info-circle me-2"></i>No logs found.
-</div>
-{% endfor %}
 
 <!-- Update the summary count badge -->
 <div id="summary-data" data-success="{{ success_count }}" data-failed="{{ failed_count }}" style="display: none;"></div>

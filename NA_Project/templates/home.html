@@ -57,82 +57,27 @@
 <!-- Quick Actions -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0 d-flex align-items-center">
+        <div class="card" style="background-color: #4e73df; border: none;">
+            <div class="card-body p-4">
+                <h5 class="text-white mb-4">
                     <i class="fas fa-bolt me-2"></i>Quick Actions
                 </h5>
-            </div>
-            <div class="card-body quick-actions">
-                <div class="row g-3">
+                <div class="row g-4">
                     <div class="col-md-4">
-                        <a href="{% url 'configure' %}" class="btn btn-primary w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
+                        <a href="{% url 'configure' %}" class="btn btn-primary w-100 py-3" style="background-color: #1e3a8a; border: none;">
                             <i class="fas fa-cog me-2"></i>Configure
                         </a>
                     </div>
                     <div class="col-md-4">
-                        <a href="{% url 'verify_config' %}" class="btn btn-secondary w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
+                        <a href="{% url 'verify_config' %}" class="btn btn-primary w-100 py-3" style="background-color: #1e3a8a; border: none;">
                             <i class="fas fa-check-circle me-2"></i>Verify
                         </a>
                     </div>
                     <div class="col-md-4">
-                        <a href="{% url 'devices' %}" class="btn btn-success w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
+                        <a href="{% url 'devices' %}" class="btn btn-primary w-100 py-3" style="background-color: #1e3a8a; border: none;">
                             <i class="fas fa-plus me-2"></i>Add Devices
                         </a>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Events -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0 d-flex align-items-center">
-                    <i class="fas fa-history me-2"></i>Recent Events
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Target</th>
-                                <th>Action</th>
-                                <th>Status</th>
-                                <th>Message</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for event in last_event %}
-                            <tr>
-                                <td>{{ event.time|date:"Y-m-d H:i:s" }}</td>
-                                <td>
-                                    <span class="badge" style="background-color: var(--medium-blue);">{{ event.target }}</span>
-                                </td>
-                                <td>{{ event.action }}</td>
-                                <td>
-                                    {% if event.status == 'Success' %}
-                                        <span class="badge bg-success status-success">Success</span>
-                                    {% else %}
-                                        <span class="badge bg-danger status-failed">Error</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <small class="{% if event.status == 'Success' %}status-success{% else %}status-failed{% endif %}">{{ event.messages|truncatechars:50 }}</small>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center">No recent events</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>

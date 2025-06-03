@@ -1,0 +1,79 @@
+<!-- Edit Device Modal -->
+<div class="modal fade" id="editDeviceModal" tabindex="-1" aria-labelledby="editDeviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editDeviceModalLabel">Edit Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editDeviceForm" class="row g-3">
+                    <!-- First Row -->
+                    <div class="col-md-6">
+                        <label for="edit_ip_address" class="form-label">IP Address</label>
+                        <input type="text" class="form-control" id="edit_ip_address" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit_hostname" class="form-label">Hostname</label>
+                        <input type="text" class="form-control" id="edit_hostname" required>
+                    </div>
+
+                    <!-- Second Row -->
+                    <div class="col-md-6">
+                        <label for="edit_username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="edit_username" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit_password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="edit_password" required>
+                    </div>
+
+                    <!-- Third Row -->
+                    <div class="col-md-6">
+                        <label for="edit_vendor" class="form-label">Vendor</label>
+                        <select class="form-select" id="edit_vendor" required>
+                            <option value="mikrotik">Mikrotik</option>
+                            <option value="cisco">Cisco</option>
+                            <option value="juniper">Juniper</option>
+                            <option value="ubiquiti">Ubiquiti</option>
+                            <option value="cambium">Cambium</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit_segmentation" class="form-label">Segment</label>
+                        <select class="form-select" id="edit_segmentation" required>
+                            {% for segmentation in segmentations %}
+                            <option value="{{ segmentation.segmentation_type }}">{{ segmentation.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Fourth Row -->
+                    <div class="col-md-12">
+                        <label for="edit_device_category" class="form-label">Device Category</label>
+                        <select class="form-select" id="edit_device_category" required>
+                            {% for category_code, category_name in device_categories %}
+                            <option value="{{ category_code }}">{{ category_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Fifth Row -->
+                    <div class="col-md-6">
+                        <label for="edit_api_port" class="form-label">API Port</label>
+                        <input type="number" class="form-control" id="edit_api_port" value="8728" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="edit_ssh_port" class="form-label">SSH Port</label>
+                        <input type="number" class="form-control" id="edit_ssh_port" value="22" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="editDeviceForm" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-danger delete-device" data-device-id="">Delete Device</button>
+            </div>
+        </div>
+    </div>
+</div> 
