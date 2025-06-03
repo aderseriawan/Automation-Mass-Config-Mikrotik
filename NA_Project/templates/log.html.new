@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ log_type }} - DevicesManagement{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Status colors */
+    .status-success {
+        color: #4CAF50 !important;
+        font-weight: 600;
+    }
+    
+    .status-failed {
+        color: #F44336 !important;
+        font-weight: 600;
+    }
+    
+    .status-warning {
+        color: #FF9800 !important;
+        font-weight: 600;
+    }
+    
+    .command-output {
+        font-family: 'Courier New', Courier, monospace;
+        white-space: pre-wrap;
+        background-color: var(--dark-blue);
+        color: #ffffff;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    
+    .log-entry {
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        background-color: var(--card-bg);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .log-entry:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+    .log-header {
+        padding: 0.75rem 1rem;
+        background-color: var(--secondary-color);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #ffffff;
+    }
+
+    .log-body {
+        padding: 1.25rem;
+        color: var(--text-color);
+    }
+
+    .log-command {
+        font-family: 'Courier New', Courier, monospace;
+        background-color: var(--orange);
+        color: #ffffff;
+        padding: 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .log-output {
+        font-family: 'Courier New', Courier, monospace;
+        background-color: var(--dark-blue);
+        color: #ffffff;
+        padding: 1rem;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    /* Improved button styling */
+    .btn-outline-secondary {
+        color: var(--text-color);
+        border-color: var(--border-color);
+    }
+    
+    .btn-outline-secondary:hover, 
+    .btn-outline-secondary.active {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+        color: #ffffff;
+    }
+    
+    /* Ensure contrast in dropdown menus */
+    .dropdown-menu {
+        background-color: var(--card-bg);
+        border-color: var(--border-color);
+    }
+    
+    .dropdown-item {
+        color: var(--text-color);
+    }
+    
+    .dropdown-item:hover,
+    .dropdown-item:focus,
+    .dropdown-item.active {
+        background-color: var(--secondary-color);
+        color: #ffffff;
+    }
+    
+    /* Better table styling */
+    .table {
+        color: var(--text-color);
+    }
+
+    .sort-link {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .sort-link:hover {
+        text-decoration: underline;
+    }
+
+    .sort-icon {
+        font-size: 0.8em;
+        margin-left: 0.2em;
+    }
+
+    .dropdown-menu {
+        min-width: 200px;
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+    }
+
+    .dropdown-item i {
+        margin-right: 0.5rem;
+        width: 20px;
+    }
+
+    .dropdown-divider {
+        margin: 0.3rem 0;
+    }
+
+    .btn-group > .dropdown:not(:last-child) > .btn {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .btn-group > .dropdown:not(:first-child) > .btn {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        margin-left: -1px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ log_type }}</h2>
+        <div class="btn-group">
+            <button type="button" class="btn btn-danger" id="clear-logs-btn">
+                <i class="fas fa-trash me-2"></i>Clear All Logs
+            </button>
+            <a href="{{ request.path }}" class="btn btn-primary">
+                <i class="fas fa-sync-alt me-2"></i>Refresh
+            </a>
+            <a href="{{ request.path }}?{{ request.GET.urlencode }}&export=excel" class="btn btn-success">
+                <i class="fas fa-file-excel me-2"></i>Export to Excel
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filter bar -->
+    <div class="card mb-4">
+        <div class="card-body py-3 d-flex flex-wrap justify-content-between align-items-center">
+            <div class="d-flex flex-wrap" style="flex: 1;">
+                <div class="me-3 mb-2 mb-md-0">
+                    <label for="hostname-filter" class="form-label mb-1">Hostname</label>
+                    <input type="text" id="hostname-filter" class="form-control" placeholder="Filter by hostname..." value="{{ hostname_filter }}">
+                </div>
+                <div class="me-3 mb-2 mb-md-0">
+                    <label for="status-filter" class="form-label mb-1">Status</label>
+                    <select id="status-filter" class="form-select">
+                        <option value="All Results" {% if status_filter == 'All Results' or not status_filter %}selected{% endif %}>All Results</option>
+                        <option value="Success" {% if status_filter == 'Success' %}selected{% endif %}>Success</option>
+                        <option value="Failed" {% if status_filter == 'Failed' %}selected{% endif %}>Failed</option>
+                    </select>
+                </div>
+            </div>
+            <div class="badge bg-secondary p-2 mt-2 mt-md-0" id="log-summary" style="font-size: 1rem;">
+                Summary: ✅ {{ success_count }} ❌ {{ failed_count }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Log list container that will be updated via HTMX -->
+    <div id="log-list" hx-trigger="load">
+
+    {% if log_type == 'Configuration Logs' %}
+    <div class="mb-3">
+        <div class="btn-group">
+            <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
+                Time
+                {% if current_sort == 'time' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if log_type == 'Verify Logs' %}
+    <div class="mb-3">
+        <div class="btn-group">
+            <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
+               class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
+                Time
+                {% if current_sort == 'time' %}
+                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+        {% include "partials/log_list.html" %}
+    </div>
+</div>
+
+{% block extra_js %}
+<!-- Include SweetAlert2 for confirmation dialogs -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Include HTMX for partial page updates -->
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize variables for filter debouncing
+        let hostnameTimeout;
+        const debounceDelay = 500; // ms
+        const hostnameFilter = document.getElementById('hostname-filter');
+        const statusFilter = document.getElementById('status-filter');
+        const logList = document.getElementById('log-list');
+        
+        // Function to refresh log list with filters
+        function refreshLogList() {
+            const hostname = hostnameFilter.value.trim();
+            const status = statusFilter.value;
+            
+            // Use HTMX to refresh the log list
+            logList.setAttribute('hx-get', `${window.location.pathname}?hostname=${encodeURIComponent(hostname)}&status=${encodeURIComponent(status)}`);
+            logList.setAttribute('hx-target', '#log-list');
+            logList.setAttribute('hx-trigger', 'refreshLogs');
+            
+            // Trigger the HTMX request
+            htmx.trigger('#log-list', 'refreshLogs');
+        }
+        
+        // Add event listener for hostname filter with debounce
+        hostnameFilter.addEventListener('input', function() {
+            clearTimeout(hostnameTimeout);
+            hostnameTimeout = setTimeout(refreshLogList, debounceDelay);
+        });
+        
+        // Add event listener for status filter (immediate)
+        statusFilter.addEventListener('change', refreshLogList);
+        
+        // Handle Clear All Logs button with SweetAlert2 confirmation
+        document.getElementById('clear-logs-btn').addEventListener('click', function() {
+            Swal.fire({
+                title: 'Clear all logs?',
+                text: 'This action cannot be undone!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes, clear all logs!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Send AJAX request to clear logs
+                    fetch('{% url "clear_logs" %}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.ok) {
+                            Swal.fire(
+                                'Cleared!',
+                                'All logs have been cleared.',
+                                'success'
+                            );
+                            // Refresh the log list
+                            refreshLogList();
+                        } else {
+                            Swal.fire(
+                                'Error!',
+                                'Failed to clear logs.',
+                                'error'
+                            );
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire(
+                            'Error!',
+                            'An error occurred while clearing logs.',
+                            'error'
+                        );
+                    });
+                }
+            });
+        });
+        
+        // Initial load of log list
+        refreshLogList();
+    });
+</script>
+{% endblock %}
+{% endblock %}

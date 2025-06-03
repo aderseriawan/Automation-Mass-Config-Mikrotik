@@ -7,13 +7,17 @@ from django.contrib   import messages
 from django.db        import transaction
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 import xlsxwriter
 from io import BytesIO
+import json
+from django.views.decorators.http import require_http_methods, require_POST, require_GET
 
 from .models          import Device, Log
 from .forms           import UploadFileForm
 from .mikrotik_api_bulk import open_api, exec_cli
+from .filters         import SegmentationFilter
+from segmentation.models import Segmentation
 
 import ipaddress, pandas as pd
 import socket
@@ -69,7 +73,7 @@ def mass_delete_log(request):
             # Delete verify logs
             Log.objects.filter(action="Verify").delete()
             messages.success(request, "Verify logs deleted successfully.")
-            return redirect("verify_logs")
+            return redirect("log")
         else:
             # Delete device management logs
             Log.objects.filter(action="Add Device").delete()
@@ -104,14 +108,18 @@ def mass_delete_log(request):
 
 @login_required(login_url='login')
 def log(request):
-    sort_by = request.GET.get("sort_by", "target")
-    order   = request.GET.get("order", "asc")
-
-    # Filter hanya untuk log konfigurasi (Configure dan Connect API)
-    qs = Log.objects.filter(action__in=["Configure", "Connect API"])
+    # Base query - include configuration and verify logs
+    qs = Log.objects.filter(action__in=["Configure", "Connect API", "Verify"])
     
-    # Add hostname information to logs
-    logs_with_hostname = []
+    # Apply filters
+    hostname_filter = request.GET.get('hostname', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    
+    # Process hostname filter (case-insensitive search)
+    filtered_logs = []
+    success_count = 0
+    failed_count = 0
+    
     for log in qs:
         try:
             device = Device.objects.get(ip_address=log.target)
@@ -119,43 +127,147 @@ def log(request):
         except Device.DoesNotExist:
             hostname = '-'
         
-        log.hostname = hostname  # Tambahkan hostname ke objek log
-        logs_with_hostname.append(log)
+        log.hostname = hostname  # Add hostname to log object
+        
+        # Apply hostname filter if provided
+        if hostname_filter and hostname_filter.lower() not in hostname.lower():
+            continue
+        
+        # Apply status filter if provided
+        if status_filter and status_filter != 'All Results':
+            if status_filter == 'Success' and log.status != 'Success':
+                continue
+            if status_filter == 'Failed' and log.status != 'Error':
+                continue
+        
+        # Count success/failed for summary
+        if log.status.lower() == 'success':
+            success_count += 1
+        elif log.status.lower() == 'error':
+            failed_count += 1
+        
+        filtered_logs.append(log)
     
-    # Sort logs
-    if sort_by == "target":
-        logs_with_hostname = sorted(logs_with_hostname, 
-                                  key=lambda l: ipaddress.ip_address(l.target),
-                                  reverse=(order == "desc"))
-    elif sort_by == "hostname":
-        logs_with_hostname = sorted(logs_with_hostname,
-                                  key=lambda l: l.hostname.lower(),
-                                  reverse=(order == "desc"))
-    elif sort_by == "status":
-        logs_with_hostname = sorted(logs_with_hostname,
-                                  key=lambda l: l.status,
-                                  reverse=(order == "desc"))
-    elif sort_by == "time":
-        if order == "desc":
-            logs_with_hostname = sorted(logs_with_hostname,
-                                      key=lambda l: l.time,
-                                      reverse=True)
-        else:
-            logs_with_hostname = sorted(logs_with_hostname,
-                                      key=lambda l: l.time)
-
-    # Handle export to Excel
+    # Sort logs by time (newest first)
+    filtered_logs = sorted(filtered_logs, key=lambda l: l.time, reverse=True)
+    
+    # Handle export to Excel with applied filters
     if request.GET.get('export') == 'excel':
-        return export_logs_to_excel(logs_with_hostname, "Configuration_Logs")
+        return export_logs_to_excel(filtered_logs, "Configuration_Logs")
+
+    # Check if this is an HTMX request for partial update
+    if request.headers.get('HX-Request'):
+        return render(request, "partials/log_list.html", {
+            "logs": filtered_logs,
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "log_type": "Configuration Logs"
+        })
 
     return render(request, "log.html", {
-        "logs": logs_with_hostname,
-        "devices": Device.objects.all(),
-        "current_sort": sort_by,
-        "current_order": order,
-        "next_order": "desc" if order == "asc" else "asc",
+        "logs": filtered_logs,
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "hostname_filter": hostname_filter,
+        "status_filter": status_filter,
         "log_type": "Configuration Logs"
     })
+
+
+@login_required(login_url='login')
+@require_POST
+def clear_logs(request):
+    """Clear all logs from the database"""
+    # Delete all logs
+    Log.objects.all().delete()
+    
+    # Return JSON response
+    return JsonResponse({"ok": 1})
+
+
+@login_required(login_url='login')
+def logs(request):
+    """Unified logs view that displays all types of logs with filtering"""
+    # Start with all logs and order by most recent first
+    logs_queryset = Log.objects.all().order_by('-time')
+    
+    # Get filter parameters
+    hostname_filter = request.GET.get('hostname', '')
+    status_filter = request.GET.get('status', 'all')
+    
+    # Apply hostname filter if provided
+    if hostname_filter:
+        # Get devices matching the hostname filter
+        matching_devices = Device.objects.filter(hostname__icontains=hostname_filter)
+        if matching_devices.exists():
+            # Get the IP addresses of matching devices
+            ip_addresses = [device.ip_address for device in matching_devices]
+            # Filter logs by these IP addresses
+            logs_queryset = logs_queryset.filter(target__in=ip_addresses)
+        else:
+            # If no matching devices, try direct filtering on target field
+            logs_queryset = logs_queryset.filter(target__icontains=hostname_filter)
+    
+    # Apply status filter if provided
+    if status_filter and status_filter.lower() != 'all':
+        logs_queryset = logs_queryset.filter(status__iexact=status_filter)
+    
+    # Add hostname information to logs
+    logs_with_hostname = []
+    for log in logs_queryset:
+        try:
+            device = Device.objects.get(ip_address=log.target)
+            hostname = device.hostname or log.target
+        except Device.DoesNotExist:
+            hostname = log.target
+        
+        log.hostname = hostname  # Add hostname to log object
+        logs_with_hostname.append(log)
+    
+    # Count statistics for summary
+    success_count = sum(1 for log in logs_with_hostname if log.status.lower() == 'success')
+    failed_count = len(logs_with_hostname) - success_count
+    
+    # If this is an HTMX request, return only the logs list
+    if request.headers.get('HX-Request'):
+        return render(request, "partials/logs_list.html", {
+            "logs": logs_with_hostname,
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "hostname_filter": hostname_filter,
+            "status_filter": status_filter
+        })
+    
+    return render(request, "logs.html", {
+        "logs": logs_with_hostname,
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "hostname_filter": hostname_filter,
+        "status_filter": status_filter
+    })
+    
+    # Count statistics for summary
+    success_count = sum(1 for log in logs_with_hostname if log.status.lower() == 'success')
+    failed_count = len(logs_with_hostname) - success_count
+    
+    # If this is an HTMX request, return only the logs list
+    if request.headers.get('HX-Request'):
+        return render(request, "partials/logs_list.html", {
+            "logs": logs_with_hostname,
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "hostname_filter": hostname_filter,
+            "status_filter": status_filter
+        })
+    
+    return render(request, "logs.html", {
+        "logs": logs_with_hostname,
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "hostname_filter": hostname_filter,
+        "status_filter": status_filter
+    })
+
 
 @login_required(login_url='login')
 def verify_logs(request):
@@ -240,8 +352,20 @@ def device_logs(request):
 @login_required(login_url='login')
 def configure(request):
     if request.method != "POST":
+        devices = Device.objects.all()
+        
+        # Apply device category filter
+        device_category = request.GET.get('device_category', '')
+        if device_category:
+            devices = devices.filter(device_category=device_category)
+        
+        # Get device categories for filter dropdown
+        device_categories = Device.DEVICE_CATEGORY_CHOICES
+        
         return render(request, "config.html", {
-            "devices": Device.objects.all(),
+            "devices": devices,
+            "device_category": device_category,
+            "device_categories": device_categories,
             "mode": "Configure",
         })
 
@@ -305,8 +429,20 @@ def configure(request):
 @login_required(login_url='login')
 def verify_config(request):
     if request.method != "POST":
+        devices = Device.objects.all()
+        
+        # Apply device category filter
+        device_category = request.GET.get('device_category', '')
+        if device_category:
+            devices = devices.filter(device_category=device_category)
+        
+        # Get device categories for filter dropdown
+        device_categories = Device.DEVICE_CATEGORY_CHOICES
+        
         return render(request, "config.html", {
-            "devices": Device.objects.all(),
+            "devices": devices,
+            "device_category": device_category,
+            "device_categories": device_categories,
             "mode": "Verify",
         })
 
@@ -554,33 +690,200 @@ def configure_ssh(request):
 # ╭──────────────────────── HOME & DEVICE CRUD ──────────────────────╮
 @login_required(login_url='login')
 def devices(request):
+    # Start with all devices
+    queryset = Device.objects.all()
+    
+    # Get filter parameters
+    segmentation_type = request.GET.get('segmentation__segmentation_type')
+    device_category = request.GET.get('device_category')
+    
+    # Apply the SegmentationFilter but handle 'all' values specially
+    if segmentation_type == 'all':
+        # Remove segmentation__segmentation_type from GET data to avoid filtering
+        request_data = request.GET.copy()
+        if 'segmentation__segmentation_type' in request_data:
+            del request_data['segmentation__segmentation_type']
+    else:
+        request_data = request.GET
+    
+    if device_category == 'all':
+        # Remove device_category from GET data to avoid filtering
+        request_data = request_data.copy()
+        if 'device_category' in request_data:
+            del request_data['device_category']
+    
+    # Apply filters with modified request data
+    device_filter = SegmentationFilter(request_data, queryset=queryset)
+    
+    # Count total devices for verification
+    total_devices = Device.objects.count()
+    
+    return render(request, "devices.html", {
+        "all_device": device_filter.qs,  # Match the variable name used in the template
+        "segmentations": Segmentation.objects.all(),
+        "filter": device_filter,
+        "device_categories": Device.DEVICE_CATEGORY_CHOICES,
+        "total_devices": total_devices,
+        "segmentation_type": segmentation_type,
+        "device_category": device_category
+    })
+
+@login_required(login_url='login')
+@require_GET
+def device_json(request, pk):
+    """Get device data in JSON format for modal"""
     try:
-        # Get all devices but don't access them yet
-        devices = Device.objects.all()
-        
-        # Create context with devices
-        context = {"all_device": devices}
-        
-        # Log instead of print for better production reliability
-        # Django will handle this properly even if stdout is unavailable
-        import logging
-        logger = logging.getLogger('django')
-        logger.debug(f"Found {devices.count()} devices")
-        
-        # Render the template with our devices context
-        return render(request, "devices.html", context)
-    except Exception as e:
-        # Log the error instead of print
-        import logging
-        logger = logging.getLogger('django')
-        logger.error(f"Error in devices view: {str(e)}")
-        
-        # Provide a more graceful error handling
-        context = {
-            "all_device": [],
-            "error_message": "There was a problem loading the devices. Please try again later."
+        device = get_object_or_404(Device, pk=pk)
+        data = {
+            'id': device.id,
+            'ip_address': device.ip_address,
+            'hostname': device.hostname,
+            'username': device.username,
+            'password': device.password,
+            'api_port': device.api_port,
+            'ssh_port': device.ssh_port,
+            'device_category': device.device_category,
+            'segmentation_id': device.segmentation_id if device.segmentation else None
         }
-        return render(request, "devices.html", context)
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@login_required(login_url='login')
+@require_POST
+def device_save(request, pk):
+    """Update a device"""
+    try:
+        device = get_object_or_404(Device, pk=pk)
+        data = json.loads(request.body)
+        
+        device.ip_address = data.get('ip_address', device.ip_address)
+        device.hostname = data.get('hostname', device.hostname)
+        device.username = data.get('username', device.username)
+        device.password = data.get('password', device.password)
+        device.api_port = data.get('api_port', device.api_port)
+        device.ssh_port = data.get('ssh_port', device.ssh_port)
+        device.device_category = data.get('device_category', device.device_category)
+        
+        segmentation_id = data.get('segmentation_id')
+        if segmentation_id:
+            device.segmentation_id = segmentation_id
+        else:
+            device.segmentation = None
+        
+        device.save()
+        
+        # Log the action
+        Log.objects.create(
+            target=device.ip_address,
+            action="Configure",
+            status="Success",
+            messages=f"Device updated: {device.hostname or device.ip_address}",
+            time=timezone.now()
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Device updated successfully'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@login_required(login_url='login')
+@require_http_methods(["DELETE"])
+def device_delete(request, pk):
+    """Delete a device"""
+    try:
+        device = get_object_or_404(Device, pk=pk)
+        ip_address = device.ip_address
+        hostname = device.hostname
+        
+        device.delete()
+        
+        # Log the action
+        Log.objects.create(
+            target=ip_address,
+            action="Configure",
+            status="Success",
+            messages=f"Device deleted: {hostname or ip_address}",
+            time=timezone.now()
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Device deleted successfully'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@login_required(login_url='login')
+def bulk_delete_devices(request):
+    """Delete multiple devices at once"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        device_ids = data.get('device_ids', [])
+        
+        if not device_ids:
+            return JsonResponse({'error': 'No devices selected'}, status=400)
+            
+        devices = Device.objects.filter(id__in=device_ids)
+        count = devices.count()
+        
+        # Get device info for logging before deletion
+        device_info = [f"{device.hostname or device.ip_address}" for device in devices]
+        
+        # Delete the devices
+        devices.delete()
+        
+        # Log the action
+        Log.objects.create(
+            target="Bulk Delete",
+            action="Configure",
+            status="Success",
+            messages=f"Deleted {count} devices: {', '.join(device_info)}",
+            time=timezone.now()
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully deleted {count} devices'
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@login_required(login_url='login')
+@require_POST
+def device_add(request):
+    """Add a new device"""
+    try:
+        data = json.loads(request.body)
+        
+        # Create new device
+        device = Device(
+            ip_address=data.get('ip_address'),
+            hostname=data.get('hostname', ''),
+            username=data.get('username'),
+            password=data.get('password'),
+            api_port=data.get('api_port'),
+            ssh_port=data.get('ssh_port', 22),
+            device_category=data.get('device_category', 'router_end_point')
+        )
+        
+        segmentation_id = data.get('segmentation_id')
+        if segmentation_id:
+            device.segmentation_id = segmentation_id
+        
+        device.save()
+        
+        # Log the action
+        Log.objects.create(
+            target=device.ip_address,
+            action="Configure",
+            status="Success",
+            messages=f"Device added: {device.hostname or device.ip_address}",
+            time=timezone.now()
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Device added successfully', 'id': device.id})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 def mass_add_device(request):
@@ -599,6 +902,13 @@ def mass_add_device(request):
             try:
                 # Verify file can be read as Excel
                 df = pd.read_excel(file_path)
+                
+                # Validate column headers
+                required_columns = ['ip', 'hostname', 'username', 'password', 'vendor', 'ssh port', 'api port', 'device category']
+                missing_columns = [col for col in required_columns if col not in df.columns]
+                
+                if missing_columns:
+                    raise Exception(f"Missing required columns: {', '.join(missing_columns)}")
                 
                 # Save to session for processing later
                 request.session['uploaded_file_path'] = file_path
@@ -635,17 +945,40 @@ def mass_add_device(request):
                     for _, row in df.iterrows():
                         try:
                             # Ensure password is a string
-                            password = str(row['Password']).strip()
+                            password = str(row['password']).strip()
                             
-                            Device.objects.update_or_create(
-                                ip_address=row["IP"],
+                            # Get field values using the new column names
+                            ip_address = str(row['ip']).strip() if not pd.isna(row['ip']) else None
+                            hostname = str(row['hostname']).strip() if not pd.isna(row['hostname']) else None
+                            username = str(row['username']).strip() if not pd.isna(row['username']) else None
+                            vendor = str(row['vendor']).strip() if not pd.isna(row['vendor']) else 'Mikrotik'
+                            
+                            # Get port values, default if not provided
+                            try:
+                                ssh_port = int(row['ssh port']) if not pd.isna(row['ssh port']) else 22
+                            except:
+                                ssh_port = 22
+                                
+                            try:
+                                api_port = int(row['api port']) if not pd.isna(row['api port']) else 8728
+                            except:
+                                api_port = 8728
+                                
+                            # Get device category
+                            device_category = str(row['device category']).strip() if not pd.isna(row['device category']) else None
+                            
+                            # Create or update device
+                            device, _ = Device.objects.update_or_create(
+                                ip_address=ip_address,
                                 defaults={
-                                    'hostname': row["Hostname"],
-                                    'username': row["Username"],
+                                    'hostname': hostname if hostname else f"Device-{ip_address}",
+                                    'username': username,
                                     'password': password,
-                                    'vendor': row["Vendor"],
-                                    'ssh_port': row.get("SSH Port", 22),
-                                    'api_port': row.get("API Port", 8728),
+                                    'vendor': vendor,
+                                    'api_port': api_port,
+                                    'ssh_port': ssh_port,
+                                    'device_category': device_category,
+                                    'segmentation': None,  # No segmentation in new format
                                 }
                             )
                             Log.objects.create(
@@ -781,6 +1114,76 @@ def _open_ssh_socket(host, port, timeout=5, retries=2, delay=2):
         time.sleep(delay)
     return None
 
+def download_device_template(request):
+    """Generate a template Excel file with a single 'Device Category' column."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
+    
+    # Create a new workbook and select the active worksheet
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Device Template'
+    
+    # Define styles
+    header_fill = PatternFill(start_color='0D6EFD', end_color='0D6EFD', fill_type='solid')
+    header_font = Font(bold=True, color='FFFFFF')
+    thin_border = Border(
+        left=Side(style='thin'), 
+        right=Side(style='thin'), 
+        top=Side(style='thin'), 
+        bottom=Side(style='thin')
+    )
+    
+    # Add header
+    ws['A1'] = 'Device Category'
+    ws['A1'].font = header_font
+    ws['A1'].fill = header_fill
+    ws['A1'].border = thin_border
+    ws['A1'].alignment = Alignment(horizontal='center')
+    
+    # Add example data
+    examples = [
+        'router_end_point',
+        'router_failover',
+        'radio_bts',
+        'radio_station',
+        'router_bridging'
+    ]
+    
+    for i, example in enumerate(examples, start=2):
+        ws[f'A{i}'] = example
+        ws[f'A{i}'].border = thin_border
+    
+    # Set column width
+    ws.column_dimensions['A'].width = 30
+    
+    # Add data validation for the device category column
+    from openpyxl.worksheet.datavalidation import DataValidation
+    
+    dv = DataValidation(
+        type='list',
+        formula1='"router_end_point,router_failover,radio_bts,radio_station,router_bridging"',
+        allow_blank=False
+    )
+    dv.error = 'Please select a valid device category'
+    dv.errorTitle = 'Invalid Category'
+    
+    ws.add_data_validation(dv)
+    dv.add('A2:A1000')
+    
+    # Create response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=device_template.xlsx'
+    
+    # Save workbook to response
+    wb.save(response)
+    
+    return response
+
+# Keep the old download_template function for backward compatibility
 def download_template(request):
     # Create an in-memory output file
     output = BytesIO()
@@ -808,7 +1211,7 @@ def download_template(request):
     })
     
     # Define headers
-    headers = ['IP', 'Hostname', 'Username', 'Password', 'Vendor', 'SSH Port', 'API Port']
+    headers = ['ip', 'hostname', 'username', 'password', 'vendor', 'ssh port', 'api port', 'device category']
     
     # Write headers
     for col, header in enumerate(headers):
@@ -816,8 +1219,11 @@ def download_template(request):
     
     # Add example data
     example_data = [
-        ['192.168.1.1', 'Router-Core', 'admin', 'password123', 'Mikrotik', 22, 8728],
-        ['192.168.1.2', 'Switch-Access', 'admin', 'password123', 'Cisco', 22, '']
+        ['192.168.1.1', 'Router-Core', 'admin', 'secret123', 'Mikrotik', 22, 8728, 'router end point'],
+        ['192.168.1.2', 'Switch-Access', 'admin', 'secret123', 'Cisco', 22, 8728, 'router end point'],
+        ['10.0.0.10', 'Backup-RTR', 'admin', 'secret123', 'Juniper', 22, 8728, 'router failover'],
+        ['172.16.0.1', 'BTS-Radio', 'admin', 'secret123', 'Cambium', 22, 8728, 'radio bts'],
+        ['172.16.0.2', 'Station-Radio', 'admin', 'secret123', 'Ubiquiti', 22, 8728, 'radio station']
     ]
     
     # Write example data
@@ -833,12 +1239,13 @@ def download_template(request):
     worksheet.set_column('D:D', 15)  # Password
     worksheet.set_column('E:E', 15)  # Vendor
     worksheet.set_column('F:G', 10)  # Ports
+    worksheet.set_column('H:H', 20)  # Device Category
     
     # Add data validation for Vendor column
     worksheet.data_validation('E2:E1048576', {
         'validate': 'list',
-        'source': ['Mikrotik', 'Cisco'],
-        'error_message': 'Please select either Mikrotik or Cisco'
+        'source': ['Mikrotik', 'Cisco', 'Juniper', 'Cambium', 'Ubiquiti'],
+        'error_message': 'Please select a valid vendor'
     })
     
     # Add data validation for port numbers
@@ -851,6 +1258,13 @@ def download_template(request):
     }
     worksheet.data_validation('F2:F1048576', port_validation)
     worksheet.data_validation('G2:G1048576', port_validation)
+    
+    # Add data validation for Device Category column
+    worksheet.data_validation('H2:H1048576', {
+        'validate': 'list',
+        'source': ['router end point', 'router failover', 'radio bts', 'radio station', 'router bridging'],
+        'error_message': 'Please select a valid device category'
+    })
     
     workbook.close()
     

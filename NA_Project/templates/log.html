@@ -167,83 +167,58 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>{{ log_type }}</h2>
         <div class="btn-group">
-            <div class="dropdown me-2">
-                <button class="btn btn-primary dropdown-toggle" type="button" id="logsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-list me-2"></i>Logs
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="logsDropdown">
-                    <li>
-                        <a class="dropdown-item {% if log_type == 'Configuration Logs' %}active{% endif %}" href="{% url 'log' %}">
-                            <i class="fas fa-cog"></i>Configuration Logs
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item {% if log_type == 'Verify Logs' %}active{% endif %}" href="{% url 'verify_logs' %}">
-                            <i class="fas fa-check-circle"></i>Verify Logs
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item {% if log_type == 'Device Management Logs' %}active{% endif %}" href="{% url 'device_logs' %}">
-                            <i class="fas fa-server"></i>Device Logs
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <div class="dropdown me-2">
-                <button class="btn btn-danger dropdown-toggle" type="button" id="clearLogsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-trash me-2"></i>Clear Logs
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="clearLogsDropdown">
-                    <li>
-                        <a class="dropdown-item" href="{% url 'mass_delete_log' %}?type=config">
-                            <i class="fas fa-cog"></i>Clear Configuration Logs
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{% url 'mass_delete_log' %}?type=verify">
-                            <i class="fas fa-check-circle"></i>Clear Verify Logs
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{% url 'mass_delete_log' %}?type=device">
-                            <i class="fas fa-server"></i>Clear Device Logs
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <a href="{{ request.path }}?{{ request.GET.urlencode }}" class="btn btn-success">
+            <button type="button" class="btn btn-danger" id="clear-logs-btn">
+                <i class="fas fa-trash me-2"></i>Clear All Logs
+            </button>
+            <a href="{{ request.path }}" class="btn btn-primary">
                 <i class="fas fa-sync-alt me-2"></i>Refresh
             </a>
-            <a href="{{ request.path }}?{{ request.GET.urlencode }}&export=excel" class="btn btn-info">
+            <a href="{{ request.path }}?{{ request.GET.urlencode }}&export=excel" class="btn btn-success">
                 <i class="fas fa-file-excel me-2"></i>Export to Excel
             </a>
         </div>
     </div>
+    
+    <!-- Filter bar -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <div class="row align-items-end">
+                <div class="col-md-4 mb-2 mb-md-0">
+                    <label for="hostname-filter" class="form-label mb-1">Hostname</label>
+                    <form id="hostname-filter-form" class="mb-0">
+                        <input type="text" class="form-control" id="hostname-filter" name="hostname" placeholder="Filter by hostname..." value="{{ hostname_filter }}">
+                    </form>
+                </div>
+                <div class="col-md-5 mb-2 mb-md-0">
+                    <label class="form-label mb-1">Status</label>
+                    <div class="d-flex" id="status-buttons">
+                        <button type="button" data-status="" class="status-btn btn btn-outline-secondary me-2 {% if not status_filter or status_filter == 'All Results' %}active{% endif %}">
+                            <i class="fas fa-list me-1"></i> All Results
+                        </button>
+                        <button type="button" data-status="Success" class="status-btn btn btn-outline-success me-2 {% if status_filter == 'Success' %}active{% endif %}">
+                            <i class="fas fa-check-circle me-1"></i> Success
+                        </button>
+                        <button type="button" data-status="Failed" class="status-btn btn btn-outline-danger me-2 {% if status_filter == 'Failed' %}active{% endif %}">
+                            <i class="fas fa-times-circle me-1"></i> Failed
+                        </button>
+                    </div>
+                    <input type="hidden" id="status-filter" value="{{ status_filter }}">
+                </div>
+                <div class="col-md-3 d-flex justify-content-md-end align-items-center">
+                    <div class="badge bg-secondary p-2" id="log-summary" style="font-size: 1rem;">
+                        Summary: ✅ {{ success_count }} ❌ {{ failed_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Log list container that will be updated via HTMX -->
+    <div id="log-list-container">
 
     {% if log_type == 'Configuration Logs' %}
     <div class="mb-3">
         <div class="btn-group">
-            <a href="?sort_by=target&order={% if current_sort == 'target' and current_order == 'asc' %}desc{% else %}asc{% endif %}" 
-               class="btn btn-outline-secondary {% if current_sort == 'target' %}active{% endif %}">
-                Target IP
-                {% if current_sort == 'target' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
-            <a href="?sort_by=hostname&order={% if current_sort == 'hostname' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
-               class="btn btn-outline-secondary {% if current_sort == 'hostname' %}active{% endif %}">
-                Hostname
-                {% if current_sort == 'hostname' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
-            <a href="?sort_by=status&order={% if current_sort == 'status' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
-               class="btn btn-outline-secondary {% if current_sort == 'status' %}active{% endif %}">
-                Status
-                {% if current_sort == 'status' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
             <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
                class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
                 Time
@@ -258,27 +233,6 @@
     {% if log_type == 'Verify Logs' %}
     <div class="mb-3">
         <div class="btn-group">
-            <a href="?sort_by=target&order={% if current_sort == 'target' and current_order == 'asc' %}desc{% else %}asc{% endif %}" 
-               class="btn btn-outline-secondary {% if current_sort == 'target' %}active{% endif %}">
-                Target IP
-                {% if current_sort == 'target' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
-            <a href="?sort_by=hostname&order={% if current_sort == 'hostname' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
-               class="btn btn-outline-secondary {% if current_sort == 'hostname' %}active{% endif %}">
-                Hostname
-                {% if current_sort == 'hostname' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
-            <a href="?sort_by=status&order={% if current_sort == 'status' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
-               class="btn btn-outline-secondary {% if current_sort == 'status' %}active{% endif %}">
-                Status
-                {% if current_sort == 'status' %}
-                    <i class="fas fa-sort-{% if current_order == 'asc' %}up{% else %}down{% endif %}"></i>
-                {% endif %}
-            </a>
             <a href="?sort_by=time&order={% if current_sort == 'time' and current_order == 'asc' %}desc{% else %}asc{% endif %}"
                class="btn btn-outline-secondary {% if current_sort == 'time' %}active{% endif %}">
                 Time
@@ -290,64 +244,194 @@
     </div>
     {% endif %}
 
-    {% for log in logs %}
-    <div class="log-entry">
-        <div class="log-header">
-            <div>
-                <strong>{{ log.target }}</strong>
-                {% if log_type == 'Verify Logs' or log_type == 'Configuration Logs' %}
-                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-                <span style="color: var(--primary-color);">{{ log.hostname }}</span>
-                {% endif %}
-                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-                <td><span class="badge {% if log.status == 'Success' %}bg-success{% elif log.status == 'Failed' %}bg-danger{% else %}bg-warning{% endif %} status-{{ log.status|lower }}">{{ log.status }}</span></td>
-                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-                <span style="color: var(--text-color);">{{ log.action }}</span>
-                <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
-                <small style="color: var(--text-color); opacity: 0.7;">{{ log.time|date:"Y-m-d H:i:s" }}</small>
-            </div>
-        </div>
-        <div class="log-body">
-            {% if log.messages %}
-            <div class="mb-3">
-                <strong>Messages:</strong>
-                <p class="mb-2" style="color: var(--text-color);"><span class="status-{{ log.status|lower }}">{{ log.messages }}</span></p>
-            </div>
-            {% endif %}
-            
-            {% if log.action == 'Verify' %}
-                {% if log.command %}
-                <div class="mb-3">
-                    <strong style="color: var(--text-color);">Input Command:</strong>
-                    <div class="log-command">{{ log.command }}</div>
-                </div>
-                {% endif %}
-                
-                {% if log.output %}
-                <div>
-                    <strong style="color: var(--text-color);">Output:</strong>
-                    <div class="log-output">{{ log.output }}</div>
-                </div>
-                {% endif %}
-            {% endif %}
-        </div>
+        {% include "partials/log_list.html" %}
     </div>
-    {% empty %}
-    <div class="alert" style="background-color: var(--secondary-color); color: var(--dark-teal); border: none; border-radius: 10px;">
-        <i class="fas fa-info-circle me-2"></i>No logs found.
-    </div>
-    {% endfor %}
 </div>
 
 {% block extra_js %}
+<!-- Include SweetAlert2 for confirmation dialogs -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Include HTMX for partial page updates -->
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
 <script>
-    // Initialize Bootstrap dropdowns
     document.addEventListener('DOMContentLoaded', function() {
-        var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'))
-        var dropdownList = dropdownElementList.map(function(dropdownToggleEl) {
-            return new bootstrap.Dropdown(dropdownToggleEl)
-        })
-    })
+        // Elements
+        const hostnameFilter = document.getElementById('hostname-filter');
+        const hostnameForm = document.getElementById('hostname-filter-form');
+        const statusFilter = document.getElementById('status-filter');
+        const statusButtons = document.querySelectorAll('.status-btn');
+        const logList = document.getElementById('log-list-container');
+        const clearLogsBtn = document.getElementById('clear-logs-btn');
+        
+        // Variables
+        let hostnameTimeout;
+        const debounceDelay = 500;
+        
+        // CSRF Token function
+        function getCsrfToken() {
+            const name = 'csrftoken';
+            let cookieValue = null;
+            
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Refresh log list function
+        function refreshLogList() {
+            const hostname = hostnameFilter ? hostnameFilter.value.trim() : '';
+            const status = statusFilter ? statusFilter.value : '';
+            
+            console.log('Refreshing logs with filters - hostname:', hostname, 'status:', status);
+            
+            // Build URL
+            let url = `${window.location.pathname}?hostname=${encodeURIComponent(hostname)}`;
+            if (status) {
+                url += `&status=${encodeURIComponent(status)}`;
+            }
+            
+            console.log('Request URL:', url);
+            
+            // Use fetch instead of HTMX for more reliable updates
+            fetch(url, {
+                headers: {
+                    'HX-Request': 'true'
+                }
+            })
+            .then(function(response) {
+                return response.text();
+            })
+            .then(function(html) {
+                if (logList) {
+                    logList.innerHTML = html;
+                    console.log('Log list updated with filtered results');
+                    
+                    // Manually extract and update the summary counts from the response
+                    const summaryData = logList.querySelector('#summary-data');
+                    if (summaryData) {
+                        const successCount = summaryData.getAttribute('data-success');
+                        const failedCount = summaryData.getAttribute('data-failed');
+                        console.log('Extracted counts from response:', successCount, failedCount);
+                        
+                        // Update the summary badge
+                        const summaryBadge = document.getElementById('log-summary');
+                        if (summaryBadge) {
+                            summaryBadge.innerHTML = 'Summary: ✅ ' + successCount + ' ❌ ' + failedCount;
+                            console.log('Summary badge updated with filtered counts');
+                        }
+                    }
+                    
+                    // Execute any scripts in the response
+                    const scripts = logList.querySelectorAll('script');
+                    scripts.forEach(function(script) {
+                        const newScript = document.createElement('script');
+                        newScript.text = script.textContent;
+                        document.body.appendChild(newScript);
+                        document.body.removeChild(newScript);
+                    });
+                }
+            })
+            .catch(function(error) {
+                console.error('Error updating log list:', error);
+            });
+        }
+        
+        // Hostname filter event listeners
+        if (hostnameFilter) {
+            hostnameFilter.addEventListener('input', function() {
+                clearTimeout(hostnameTimeout);
+                hostnameTimeout = setTimeout(refreshLogList, debounceDelay);
+            });
+        }
+        
+        // Hostname form submission
+        if (hostnameForm) {
+            hostnameForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                clearTimeout(hostnameTimeout);
+                refreshLogList();
+            });
+        }
+        
+        // Status button event listeners
+        if (statusButtons) {
+            statusButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const statusValue = this.getAttribute('data-status');
+                    console.log('Status button clicked:', statusValue);
+                    
+                    if (statusFilter) {
+                        statusFilter.value = statusValue;
+                    }
+                    
+                    statusButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    refreshLogList();
+                });
+            });
+        }
+        
+        // Clear logs button
+        if (clearLogsBtn) {
+            clearLogsBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Clear logs button clicked');
+                
+                Swal.fire({
+                    title: 'Clear all logs?',
+                    text: 'This action cannot be undone!',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, clear all logs!'
+                }).then(function(result) {
+                    if (result.isConfirmed) {
+                        console.log('Confirmation accepted');
+                        const csrfToken = getCsrfToken();
+                        
+                        fetch('{% url "clear_logs" %}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': csrfToken,
+                                'Content-Type': 'application/json'
+                            },
+                            cache: 'no-cache'
+                        })
+                        .then(function(response) {
+                            return response.json();
+                        })
+                        .then(function(data) {
+                            if (data.ok) {
+                                Swal.fire('Cleared!', 'All logs have been cleared.', 'success');
+                                refreshLogList();
+                            } else {
+                                Swal.fire('Error!', 'Failed to clear logs.', 'error');
+                            }
+                        })
+                        .catch(function(error) {
+                            console.error('Error:', error);
+                            Swal.fire('Error!', 'An error occurred while clearing logs.', 'error');
+                        });
+                    }
+                });
+            });
+        }
+        
+        // Initialize on page load
+        refreshLogList();
+    });
 </script>
 {% endblock %}
 {% endblock %}

@@ -1,0 +1,62 @@
+{% for log in logs %}
+<div class="log-entry">
+    <div class="log-header">
+        <div>
+            <strong>{{ log.target }}</strong>
+            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+            <span style="color: var(--primary-color);">{{ log.hostname }}</span>
+            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+            <td><span class="badge {% if log.status == 'Success' %}bg-success{% elif log.status == 'Failed' %}bg-danger{% else %}bg-warning{% endif %} status-{{ log.status|lower }}">{{ log.status }}</span></td>
+            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+            <span style="color: var(--text-color);">{{ log.action }}</span>
+            <span class="mx-2" style="color: var(--text-color); opacity: 0.6;">|</span>
+            <small style="color: var(--text-color); opacity: 0.7;">{{ log.time|date:"Y-m-d H:i:s" }}</small>
+        </div>
+    </div>
+    <div class="log-body">
+        {% if log.messages %}
+        <div class="mb-3">
+            <strong>Messages:</strong>
+            <p class="mb-2" style="color: var(--text-color);"><span class="status-{{ log.status|lower }}">{{ log.messages }}</span></p>
+        </div>
+        {% endif %}
+        
+        {% if log.action == 'Verify' %}
+            {% if log.command %}
+            <div class="mb-3">
+                <strong style="color: var(--text-color);">Input Command:</strong>
+                <div class="log-command">{{ log.command }}</div>
+            </div>
+            {% endif %}
+            
+            {% if log.output %}
+            <div>
+                <strong style="color: var(--text-color);">Output:</strong>
+                <div class="log-output">{{ log.output }}</div>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% empty %}
+<div class="alert" style="background-color: var(--secondary-color); color: var(--dark-teal); border: none; border-radius: 10px;">
+    <i class="fas fa-info-circle me-2"></i>No logs found.
+</div>
+{% endfor %}
+
+<!-- Update the summary count badge -->
+<div id="summary-data" data-success="{{ success_count }}" data-failed="{{ failed_count }}" style="display: none;"></div>
+<script>
+    (function() {
+        // Get the current filtered counts from the data attributes
+        const summaryData = document.getElementById('summary-data');
+        const successCount = summaryData.getAttribute('data-success');
+        const failedCount = summaryData.getAttribute('data-failed');
+        
+        // Update the summary badge with the filtered counts
+        const summaryBadge = document.getElementById('log-summary');
+        if (summaryBadge) {
+            summaryBadge.innerHTML = 'Summary: ✅ ' + successCount + ' ❌ ' + failedCount;
+        }
+    })();
+</script>

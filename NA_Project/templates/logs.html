@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block title %}Logs - AutomateIP{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Status colors */
+    .status-success {
+        color: #4CAF50 !important;
+        font-weight: 600;
+    }
+    
+    .status-error, .status-failed {
+        color: #F44336 !important;
+        font-weight: 600;
+    }
+    
+    .command-output {
+        font-family: 'Courier New', Courier, monospace;
+        white-space: pre-wrap;
+        background-color: var(--dark-blue);
+        color: #ffffff;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    
+    .log-entry {
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        background-color: var(--card-bg);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .log-entry:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+
+    .log-header {
+        padding: 0.75rem 1rem;
+        background-color: var(--secondary-color);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #ffffff;
+    }
+
+    .log-body {
+        padding: 1.25rem;
+        color: var(--text-color);
+    }
+
+    .log-command {
+        font-family: 'Courier New', Courier, monospace;
+        background-color: var(--orange);
+        color: #ffffff;
+        padding: 0.75rem;
+        border-radius: 6px;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .log-output {
+        font-family: 'Courier New', Courier, monospace;
+        background-color: var(--dark-blue);
+        color: #ffffff;
+        padding: 1rem;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    /* Summary badge styling */
+    .summary-badge {
+        font-size: 0.9rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.25rem;
+        margin-right: 0.5rem;
+    }
+    
+    .filter-bar {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>System Logs</h2>
+        
+        <form id="clear-logs-form" action="{% url 'clear_logs' %}" method="POST" class="d-inline">
+            {% csrf_token %}
+            <button type="button" class="btn btn-danger clear-logs-btn">
+                <i class="fas fa-trash me-2"></i>Clear All Logs
+            </button>
+        </form>
+    </div>
+    
+    <!-- Filter Bar -->
+    <div class="filter-bar" id="logs-filter">
+        <div class="row g-3">
+            <div class="col-md-5">
+                <label for="hostname-filter" class="form-label">Search by Hostname</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="hostname-filter" 
+                    placeholder="Enter hostname" 
+                    value="{{ hostname_filter }}"
+                    hx-get="{% url 'logs' %}"
+                    hx-trigger="keyup changed delay:500ms"
+                    hx-target="#logs-container"
+                    hx-include="#status-filter"
+                    name="hostname"
+                >
+            </div>
+            <div class="col-md-4">
+                <label for="status-filter" class="form-label">Status</label>
+                <select 
+                    class="form-select" 
+                    id="status-filter" 
+                    hx-get="{% url 'logs' %}"
+                    hx-trigger="change"
+                    hx-target="#logs-container"
+                    hx-include="#hostname-filter"
+                    name="status"
+                >
+                    <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All</option>
+                    <option value="success" {% if status_filter == 'success' %}selected{% endif %}>Success</option>
+                    <option value="error" {% if status_filter == 'error' %}selected{% endif %}>Error</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="summary-box">
+                    <span class="fw-bold">Summary:</span>
+                    <span class="summary-badge bg-success text-white">✓ {{ success_count }}</span>
+                    <span class="summary-badge bg-danger text-white">✗ {{ failed_count }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Logs Container -->
+    <div id="logs-container">
+        {% include "partials/logs_list.html" %}
+    </div>
+</div>
+
+<!-- Toast container for notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Clear logs confirmation
+        document.querySelectorAll('.clear-logs-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Delete all logs?',
+                    text: 'This action cannot be undone.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete all logs'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('clear-logs-form').submit();
+                    }
+                });
+            });
+        });
+        
+        // Toggle log details
+        document.querySelectorAll('.toggle-details').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const detailsId = this.getAttribute('data-target');
+                const detailsElement = document.getElementById(detailsId);
+                
+                if (detailsElement.style.display === 'none' || !detailsElement.style.display) {
+                    detailsElement.style.display = 'block';
+                    this.innerHTML = '<i class="fas fa-chevron-up"></i>';
+                } else {
+                    detailsElement.style.display = 'none';
+                    this.innerHTML = '<i class="fas fa-chevron-down"></i>';
+                }
+            });
+        });
+        
+        // Show notification after HTMX requests complete
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            const toast = document.createElement('div');
+            toast.classList.add('toast');
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="toast-header">
+                    <i class="fas fa-info-circle me-2 text-primary"></i>
+                    <strong class="me-auto">Filters Applied</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    Logs have been filtered successfully.
+                </div>
+            `;
+            
+            document.querySelector('.toast-container').appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Set up toggle details handlers again after HTMX swap
+            document.querySelectorAll('.toggle-details').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const detailsId = this.getAttribute('data-target');
+                    const detailsElement = document.getElementById(detailsId);
+                    
+                    if (detailsElement.style.display === 'none' || !detailsElement.style.display) {
+                        detailsElement.style.display = 'block';
+                        this.innerHTML = '<i class="fas fa-chevron-up"></i>';
+                    } else {
+                        detailsElement.style.display = 'none';
+                        this.innerHTML = '<i class="fas fa-chevron-down"></i>';
+                    }
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -75,6 +75,31 @@
             </div>
         </div>
 
+        <!-- Device Category Filter -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Device Category Filter</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-10">
+                        <label for="device_category" class="form-label">Device Category</label>
+                        <select name="device_category" id="device_category" class="form-select" form="filterForm">
+                            <option value="">All Categories</option>
+                            {% for category_value, category_label in device_categories %}
+                                <option value="{{ category_value }}" {% if device_category == category_value %}selected{% endif %}>{{ category_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100" form="filterForm">
+                            <i class="fas fa-search me-2"></i>Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Device Selection -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
@@ -165,6 +190,10 @@
     </form>
 </div>
 
+<!-- Filter Form - Hidden but used for filter submission -->
+<form id="filterForm" method="GET" action="" style="display:none;">
+</form>
+
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -185,28 +214,34 @@ document.addEventListener('DOMContentLoaded', function() {
     const sshPorts = document.querySelectorAll('.ssh-port');
     const commandForm = document.getElementById('commandForm');
 
+    // Store URLs as JavaScript variables to avoid template tags in JavaScript
+    var verifyConfigUrl = "{% url 'verify_config' %}";
+    var configureUrl = "{% url 'configure' %}";
+    var verifyConfigSshUrl = "{% url 'verify_config_ssh' %}";
+    var configureSshUrl = "{% url 'configure_ssh' %}";
+
     function togglePorts(method) {
         if (method === 'api') {
-            apiPorts.forEach(port => port.style.display = '');
-            sshPorts.forEach(port => port.style.display = 'none');
+            apiPorts.forEach(function(port) { port.style.display = ''; });
+            sshPorts.forEach(function(port) { port.style.display = 'none'; });
             {% if 'Verify' in mode %}
-            commandForm.action = "{% url 'verify_config' %}";
+            commandForm.action = verifyConfigUrl;
             {% else %}
-            commandForm.action = "{% url 'configure' %}";
+            commandForm.action = configureUrl;
             {% endif %}
         } else {
-            apiPorts.forEach(port => port.style.display = 'none');
-            sshPorts.forEach(port => port.style.display = '');
+            apiPorts.forEach(function(port) { port.style.display = 'none'; });
+            sshPorts.forEach(function(port) { port.style.display = ''; });
             {% if 'Verify' in mode %}
-            commandForm.action = "{% url 'verify_config_ssh' %}";
+            commandForm.action = verifyConfigSshUrl;
             {% else %}
-            commandForm.action = "{% url 'configure_ssh' %}";
+            commandForm.action = configureSshUrl;
             {% endif %}
         }
     }
 
-    apiMethod.addEventListener('change', () => togglePorts('api'));
-    sshMethod.addEventListener('change', () => togglePorts('ssh'));
+    apiMethod.addEventListener('change', function() { togglePorts('api'); });
+    sshMethod.addEventListener('change', function() { togglePorts('ssh'); });
 
     // Form validation
     commandForm.addEventListener('submit', function(e) {

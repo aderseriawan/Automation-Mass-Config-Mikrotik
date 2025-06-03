@@ -1,4 +1,4 @@
-﻿certifi==2025.1.31
+certifi==2025.1.31
 charset-normalizer==3.4.1
 colorama==0.4.6
 idna==3.10
@@ -7,7 +7,8 @@ requests==2.32.3
 tqdm==4.67.1
 urllib3==2.3.0
 xlsxwriter
-django==3.1.7
+django==5.2.1
+django-filter==23.5
 routeros_api
 pandas
 paramiko

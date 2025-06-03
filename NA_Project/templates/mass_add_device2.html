@@ -3,6 +3,88 @@
 {% block content %}
 <div class="container mt-5">
     <h1 class="text-center">Mass Add Device</h1>
+    
+    <div class="alert alert-info mb-4">
+        <h5 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Excel Template Format</h5>
+        <p>The Excel template contains the following columns:</p>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>ip</th>
+                        <th>hostname</th>
+                        <th>username</th>
+                        <th>password</th>
+                        <th>vendor</th>
+                        <th>ssh port</th>
+                        <th>api port</th>
+                        <th>device category</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>192.168.1.1</td>
+                        <td>Router-Core</td>
+                        <td>admin</td>
+                        <td>secret123</td>
+                        <td>Mikrotik</td>
+                        <td>22</td>
+                        <td>8728</td>
+                        <td>router end point</td>
+                    </tr>
+                    <tr>
+                        <td>192.168.1.2</td>
+                        <td>Switch-Access</td>
+                        <td>admin</td>
+                        <td>secret123</td>
+                        <td>Cisco</td>
+                        <td>22</td>
+                        <td>8728</td>
+                        <td>router end point</td>
+                    </tr>
+                    <tr>
+                        <td>10.0.0.10</td>
+                        <td>Backup-RTR</td>
+                        <td>admin</td>
+                        <td>secret123</td>
+                        <td>Juniper</td>
+                        <td>22</td>
+                        <td>8728</td>
+                        <td>router failover</td>
+                    </tr>
+                    <tr>
+                        <td>172.16.0.1</td>
+                        <td>BTS-Radio</td>
+                        <td>admin</td>
+                        <td>secret123</td>
+                        <td>Cambium</td>
+                        <td>22</td>
+                        <td>8728</td>
+                        <td>radio bts</td>
+                    </tr>
+                    <tr>
+                        <td>172.16.0.2</td>
+                        <td>Station-Radio</td>
+                        <td>admin</td>
+                        <td>secret123</td>
+                        <td>Ubiquiti</td>
+                        <td>22</td>
+                        <td>8728</td>
+                        <td>radio station</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p><strong>Valid device category values:</strong></p>
+        <ul>
+            <li><code>router end point</code></li>
+            <li><code>router failover</code></li>
+            <li><code>radio bts</code></li>
+            <li><code>radio station</code></li>
+            <li><code>router bridging</code></li>
+        </ul>
+        <p class="mb-0"><a href="{% url 'download_device_template' %}" class="btn btn-sm btn-outline-primary">Download Template</a></p>
+    </div>
     <form method="POST" class="needs-validation mt-4" novalidate>
         {% csrf_token %}
         <div class="row mb-3">

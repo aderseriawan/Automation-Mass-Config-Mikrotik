@@ -1,0 +1,18 @@
+[
+  {
+    "model": "NA_Apps.segmentation",
+    "pk": 1,
+    "fields": {
+      "name": "Fiber Optic",
+      "segmentation_type": "distribution"
+    }
+  },
+  {
+    "model": "NA_Apps.segmentation",
+    "pk": 2,
+    "fields": {
+      "name": "Wireless",
+      "segmentation_type": "access"
+    }
+  }
+]

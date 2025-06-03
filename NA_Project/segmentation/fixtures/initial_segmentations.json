@@ -1,0 +1,18 @@
+[
+  {
+    "model": "segmentation.segmentation",
+    "pk": 1,
+    "fields": {
+      "name": "fiber optic",
+      "segmentation_type": "distribution"
+    }
+  },
+  {
+    "model": "segmentation.segmentation",
+    "pk": 2,
+    "fields": {
+      "name": "wireless",
+      "segmentation_type": "distribution"
+    }
+  }
+]

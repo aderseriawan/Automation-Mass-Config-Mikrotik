@@ -31,9 +31,18 @@
 
 from django.db import models
 from django.utils import timezone
+from segmentation.models import Segmentation
 
 
 class Device(models.Model):
+    DEVICE_CATEGORY_CHOICES = (
+        ('router_end_point', 'Router End Point'),
+        ('router_failover', 'Router Failover'),
+        ('radio_bts', 'Radio BTS'),
+        ('radio_station', 'Radio Station'),
+        ('router_bridging', 'Router Bridging'),
+    )
+    
     ip_address = models.GenericIPAddressField(unique=True)
     hostname   = models.CharField(max_length=100, blank=True)
     username   = models.CharField(max_length=50)
@@ -41,6 +50,8 @@ class Device(models.Model):
     api_port   = models.PositiveIntegerField(null=True, blank=True)
     ssh_port   = models.PositiveIntegerField(default=22)
     vendor     = models.CharField(max_length=30, default="mikrotik")
+    device_category = models.CharField(max_length=30, choices=DEVICE_CATEGORY_CHOICES, default='router_end_point')
+    segmentation = models.ForeignKey(Segmentation, null=True, blank=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         return f"{self.ip_address} ({self.hostname or '-'})"

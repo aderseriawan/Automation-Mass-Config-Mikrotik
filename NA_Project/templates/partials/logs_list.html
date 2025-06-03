@@ -1,0 +1,45 @@
+{% if logs %}
+    {% for log in logs %}
+    <div class="log-entry">
+        <div class="log-header">
+            <div>
+                <i class="fas fa-server me-2"></i>
+                <strong>{{ log.hostname }}</strong>
+                <span class="badge bg-info ms-2">{{ log.target }}</span>
+                <span class="badge bg-secondary ms-2">{{ log.action }}</span>
+            </div>
+            <div>
+                <span class="status-{{ log.status|lower }}">{{ log.status }}</span>
+                <small class="ms-3">{{ log.time|date:"Y-m-d H:i:s" }}</small>
+                <button class="btn btn-sm btn-link text-white toggle-details ms-2" data-target="details-{{ log.id }}">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+        <div class="log-body">
+            <p>{{ log.messages }}</p>
+            
+            <div id="details-{{ log.id }}" style="display: none;">
+                {% if log.command %}
+                <div class="mb-3">
+                    <h6 class="mb-2">Command:</h6>
+                    <div class="log-command">{{ log.command }}</div>
+                </div>
+                {% endif %}
+                
+                {% if log.output %}
+                <div>
+                    <h6 class="mb-2">Output:</h6>
+                    <div class="log-output">{{ log.output }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        No logs found. Use the filter options above to refine your search or try different criteria.
+    </div>
+{% endif %}
