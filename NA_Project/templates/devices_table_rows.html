@@ -1,0 +1,22 @@
+{% for d in all_device %}
+<tr>
+  <td class="select-col d-none">
+    <input type="checkbox" class="device-cb form-check-input" value="{{ d.id }}">
+  </td>
+  <td>{{ d.hostname }}</td>
+  <td><span class="badge bg-primary">{{ d.ip_address }}</span></td>
+  <td>{{ d.username }}</td>
+  <td><span class="badge {% if d.vendor == 'mikrotik' %}bg-primary{% else %}bg-info{% endif %}">{{ d.vendor }}</span></td>
+  <td><span class="badge bg-success">{{ d.ssh_port|default:"22" }}</span></td>
+  <td><span class="badge bg-success">{{ d.api_port|default:"-" }}</span></td>
+  <td><span class="badge bg-info">{{ d.segmentation.get_segmentation_type_display|default:"-" }}</span></td>
+  <td><span class="badge bg-secondary">{{ d.get_device_category_display }}</span></td>
+  <td>
+    <button type="button" class="btn btn-sm btn-outline-primary edit-device-btn" data-id="{{ d.id }}">
+      <i class="fas fa-edit me-1"></i>Edit
+    </button>
+  </td>
+</tr>
+{% empty %}
+<tr><td colspan="10" class="text-center py-5 text-muted">No devices match the selected filters.</td></tr>
+{% endfor %} 

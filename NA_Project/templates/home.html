@@ -65,24 +65,19 @@
             </div>
             <div class="card-body quick-actions">
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <a href="{% url 'configure' %}" class="btn btn-primary w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
                             <i class="fas fa-cog me-2"></i>Configure
                         </a>
                     </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'verify_config' %}" class="btn btn-secondary w-100 py-3 quick-action-button" style="background-color: var(--medium-blue);">
+                    <div class="col-md-4">
+                        <a href="{% url 'verify_config' %}" class="btn btn-secondary w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
                             <i class="fas fa-check-circle me-2"></i>Verify
                         </a>
                     </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'mass_add_device' %}" class="btn btn-success w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
+                    <div class="col-md-4">
+                        <a href="{% url 'devices' %}" class="btn btn-success w-100 py-3 quick-action-button" style="background-color: var(--dark-blue);">
                             <i class="fas fa-plus me-2"></i>Add Devices
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="{% url 'mass_delete_log' %}" class="btn btn-danger w-100 py-3 quick-action-button">
-                            <i class="fas fa-trash me-2"></i>Clear Logs
                         </a>
                     </div>
                 </div>
