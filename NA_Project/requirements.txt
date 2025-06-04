@@ -13,3 +13,4 @@ routeros_api
 pandas
 paramiko
 openpyxl
+gunicorn>=21.2
