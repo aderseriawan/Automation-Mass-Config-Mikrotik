@@ -11,11 +11,7 @@ services:
       DJANGO_SUPERUSER_PASSWORD: admin123
       DJANGO_SUPERUSER_EMAIL: admin@example.com
     volumes:
-      # Hot-reload kode (opsional di produksi)
-      - ./NA_Project:/app
-      # FILE database yang sudah berisi tabel — ini yang bikin “tanpa migrate” aman
-      - ./NA_Project/db.sqlite3:/app/NA_Project/db.sqlite3
-      # Direktori statik & media
+      - ./NA_Project:/app                             # mount source-code + DB
       - static_volume:/app/static
       - media_volume:/app/media
     restart: unless-stopped
