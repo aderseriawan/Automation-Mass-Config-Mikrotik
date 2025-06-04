@@ -4,17 +4,25 @@ services:
   web:
     build: .
     container_name: devices-management
+    # —PATH DALAM KONTAINER—
+    # /app/                 → manage.py
+    # /app/NA_Project/      → settings.py + db.sqlite3 (sesuai "NAME")
+    working_dir: /app
     ports:
       - "8000:8000"
     environment:
-      DJANGO_SUPERUSER_USERNAME: admin      # boleh dihapus kalau sudah ada user
+      DJANGO_SUPERUSER_USERNAME: admin       # opsional kalau DB sudah punya user
       DJANGO_SUPERUSER_PASSWORD: admin123
       DJANGO_SUPERUSER_EMAIL: admin@example.com
     volumes:
-      - ./NA_Project:/app                             # mount source-code + DB
+      # Seluruh source + database (hot-reload nyaman saat dev)
+      - ./NA_Project:/app
+      # Direktori statik & media (persisten di host)
       - static_volume:/app/static
       - media_volume:/app/media
     restart: unless-stopped
+    # Jika container jalan sebagai non-root dan Anda perlu UID/GID host:
+    # user: "${UID:-1000}:${GID:-1000}"
 
 volumes:
   static_volume:
