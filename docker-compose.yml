@@ -1,35 +1,23 @@
-version: '3.8'
+version: "3.8"
 
 services:
   web:
     build: .
     container_name: devices-management
-    volumes:
-      - ./NA_Project:/app
-      - static_volume:/app/static
-      - media_volume:/app/media
-      - db_volume:/app/db  
     ports:
       - "8000:8000"
     environment:
-      - DJANGO_SUPERUSER_USERNAME=admin
-      - DJANGO_SUPERUSER_PASSWORD=admin123
-      - DJANGO_SUPERUSER_EMAIL=admin@example.com
-    restart: always
-    command: >
-      sh -c "
-        python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput --clear &&
-        echo \"from django.contrib.auth import get_user_model;
-              User=get_user_model();
-              u='${DJANGO_SUPERUSER_USERNAME}';
-              User.objects.filter(username=u).exists() or
-              User.objects.create_superuser(
-                  u, '${DJANGO_SUPERUSER_EMAIL}', '${DJANGO_SUPERUSER_PASSWORD}'
-              )\" | python manage.py shell &&
-        gunicorn NA_Project.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+      DJANGO_SUPERUSER_USERNAME: admin
+      DJANGO_SUPERUSER_PASSWORD: admin123
+      DJANGO_SUPERUSER_EMAIL: admin@example.com
+    volumes:
+      - ./NA_Project:/app          # hot-reload kode (opsional di prod)
+      - static_volume:/app/static
+      - media_volume:/app/media
+      - db_volume:/app/db          # path sesuai settings.py
+    restart: unless-stopped
 
 volumes:
   static_volume:
   media_volume:
-  db_volume:   
+  db_volume:
