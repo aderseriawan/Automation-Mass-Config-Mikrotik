@@ -27,7 +27,7 @@ SECRET_KEY = '6pg(mo-s^n-t^i+tym$d*!8=5i4ghyooawx0or7ak!3ikl4uq+'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', '10.101.251.241', '10.10.11.222']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
