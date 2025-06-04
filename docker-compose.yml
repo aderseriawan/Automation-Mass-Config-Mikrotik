@@ -8,6 +8,7 @@ services:
       - ./NA_Project:/app
       - static_volume:/app/static
       - media_volume:/app/media
+      - db_volume:/app/NA_Project/db.sqlite3
     ports:
       - "8000:8000"
     environment:
