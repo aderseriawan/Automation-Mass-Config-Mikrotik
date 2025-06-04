@@ -16,7 +16,7 @@ services:
       - DJANGO_SUPERUSER_EMAIL=admin@example.com
     restart: always
     command: >
-      sh -c "python manage.py makemigrations &&
+      sh -c "python manage.py migrate auth &&
              python manage.py migrate &&
              python manage.py collectstatic --noinput &&
              echo \"from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'admin123') if not User.objects.filter(username='admin').exists() else None\" | python manage.py shell &&
