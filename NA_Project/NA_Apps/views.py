@@ -524,42 +524,55 @@ def configure_ssh(request):
 # ╭──────────────────────── HOME & DEVICE CRUD ──────────────────────╮
 @login_required(login_url='login')
 def devices(request):
-    # Start with all devices
-    queryset = Device.objects.all()
+    # Get all devices
+    devices = Device.objects.all()
     
-    # Get filter parameters
-    segmentation_type = request.GET.get('segmentation__segmentation_type')
-    device_category = request.GET.get('device_category')
+    # Ensure both Distribution and Customer segments exist
+    distribution = Segmentation.objects.filter(segmentation_type='distribution').first()
+    customer = Segmentation.objects.filter(segmentation_type='customer').first()
     
-    # Apply the SegmentationFilter but handle 'all' values specially
-    if segmentation_type == 'all':
-        # Remove segmentation__segmentation_type from GET data to avoid filtering
-        request_data = request.GET.copy()
-        if 'segmentation__segmentation_type' in request_data:
-            del request_data['segmentation__segmentation_type']
-    else:
-        request_data = request.GET
+    # Create segments if they don't exist
+    if not distribution:
+        distribution = Segmentation.objects.create(
+            name='Distribution',
+            segmentation_type='distribution'
+        )
     
-    if device_category == 'all':
-        # Remove device_category from GET data to avoid filtering
-        request_data = request_data.copy()
-        if 'device_category' in request_data:
-            del request_data['device_category']
+    if not customer:
+        customer = Segmentation.objects.create(
+            name='Customer',
+            segmentation_type='customer'
+        )
     
-    # Apply filters with modified request data
-    device_filter = SegmentationFilter(request_data, queryset=queryset)
+    # Remove any duplicate segments but keep the ones being used by devices
+    used_distribution_ids = Device.objects.filter(segmentation__segmentation_type='distribution').values_list('segmentation_id', flat=True)
+    used_customer_ids = Device.objects.filter(segmentation__segmentation_type='customer').values_list('segmentation_id', flat=True)
     
-    # Count total devices for verification
-    total_devices = Device.objects.count()
+    # Keep the first distribution segment and any that are being used
+    Segmentation.objects.filter(
+        segmentation_type='distribution'
+    ).exclude(
+        id__in=list(used_distribution_ids) + [distribution.id]
+    ).delete()
+    
+    # Keep the first customer segment and any that are being used
+    Segmentation.objects.filter(
+        segmentation_type='customer'
+    ).exclude(
+        id__in=list(used_customer_ids) + [customer.id]
+    ).delete()
+    
+    # Get device categories for the dropdown
+    device_categories = Device.DEVICE_CATEGORY_CHOICES
+    
+    # Get final list of segmentations, ordered by type to ensure Distribution appears first
+    segmentations = Segmentation.objects.order_by('segmentation_type')
     
     return render(request, "devices.html", {
-        "all_device": device_filter.qs,  # Match the variable name used in the template
-        "segmentations": Segmentation.objects.all(),
-        "filter": device_filter,
-        "device_categories": Device.DEVICE_CATEGORY_CHOICES,
-        "total_devices": total_devices,
-        "segmentation_type": segmentation_type,
-        "device_category": device_category
+        "all_device": devices,
+        "device_categories": device_categories,
+        "segmentations": segmentations,
+        "total_devices": devices.count(),
     })
 
 @login_required(login_url='login')
@@ -590,45 +603,65 @@ def device_json(request, pk):
 @login_required(login_url='login')
 @require_POST
 def device_save(request, pk):
-    """Update a device"""
     try:
-        device = get_object_or_404(Device, pk=pk)
         data = json.loads(request.body)
+        device = get_object_or_404(Device, pk=pk)
         
-        device.ip_address = data.get('ip_address', device.ip_address)
-        device.hostname = data.get('hostname', device.hostname)
-        device.username = data.get('username', device.username)
-        device.password = data.get('password', device.password)
-        device.api_port = data.get('api_port', device.api_port)
-        device.ssh_port = data.get('ssh_port', device.ssh_port)
-        device.device_category = data.get('device_category', device.device_category)
+        # Update basic fields
+        device.ip_address = data['ip_address']
+        device.hostname = data['hostname']
+        device.username = data['username']
+        if data.get('password'):  # Only update password if provided
+            device.password = data['password']
+        device.vendor = data['vendor']
+        device.api_port = data['api_port']
+        device.ssh_port = data['ssh_port']
+        device.device_category = data['device_category']
         
-        # Handle segmentation
-        segmentation_type = data.get('segmentation_type')
-        if segmentation_type:
-            # Get or create the segmentation based on type
-            segmentation, created = Segmentation.objects.get_or_create(
-                segmentation_type=segmentation_type,
-                defaults={'name': segmentation_type.capitalize()}
-            )
+        # Update segmentation
+        if 'segmentation_id' in data:
+            try:
+                # First try to get existing segmentation
+                segmentation = Segmentation.objects.get(id=data['segmentation_id'])
+            except Segmentation.DoesNotExist:
+                # If not found, create new one based on type
+                segmentation_type = data.get('segmentation_type', '').lower()
+                if segmentation_type in ['distribution', 'customer']:
+                    segmentation = Segmentation.objects.create(
+                        name=segmentation_type.capitalize(),
+                        segmentation_type=segmentation_type
+                    )
+                else:
+                    raise ValueError(f"Invalid segmentation type: {segmentation_type}")
+            
             device.segmentation = segmentation
-        else:
-            device.segmentation = None
         
         device.save()
         
-        # Log the action
+        # Create log entry
         Log.objects.create(
             target=device.ip_address,
-            action="Configure",
+            action="Edit Device",
             status="Success",
-            messages=f"Device updated: {device.hostname or device.ip_address}",
-            time=timezone.now()
+            time=timezone.now(),
+            messages=f"Device {device.hostname} updated successfully"
         )
         
-        return JsonResponse({'success': True, 'message': 'Device updated successfully'})
+        return JsonResponse({
+            'success': True,
+            'message': 'Device updated successfully',
+            'device': {
+                'id': device.id,
+                'segmentation': {
+                    'id': device.segmentation.id,
+                    'type': device.segmentation.segmentation_type,
+                    'display': device.segmentation.get_segmentation_type_display()
+                } if device.segmentation else None
+            }
+        })
+        
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 @login_required(login_url='login')
 @require_http_methods(["DELETE"])

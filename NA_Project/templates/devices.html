@@ -170,8 +170,17 @@
                         <div class="col-md-6">
                             <label class="form-label">Segment</label>
                             <select id="segment" class="form-select" required>
-                                <option value="distribution">Distribution</option>
-                                <option value="customer">Customer</option>
+                                <option value="">Select Segment</option>
+                                {% for segmentation in segmentations %}
+                                    {% if segmentation.segmentation_type == 'distribution' %}
+                                        <option value="{{ segmentation.id }}" data-type="distribution">Distribution</option>
+                                    {% endif %}
+                                {% endfor %}
+                                {% for segmentation in segmentations %}
+                                    {% if segmentation.segmentation_type == 'customer' %}
+                                        <option value="{{ segmentation.id }}" data-type="customer">Customer</option>
+                                    {% endif %}
+                                {% endfor %}
                             </select>
                         </div>
                         <!-- FOURTH ROW -->

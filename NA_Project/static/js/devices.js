@@ -30,24 +30,35 @@
     $('#username').val(d.username || '');
     $('#password').val(''); // never pre-fill password
     $('#vendor').val(d.vendor || 'mikrotik');
-    $('#segment').val(d.segmentation_type || 'distribution');
+    $('#segment').val(d.segmentation?.id || '');
     $('#device_category').val(d.device_category || '');
     $('#api_port').val(d.api_port || 8728);
     $('#ssh_port').val(d.ssh_port || 22);
+    
+    // Log the segmentation data for debugging
+    console.log('Filling form with segmentation:', d.segmentation);
   }
 
   function payload() {
-    return JSON.stringify({
-      ip_address: $('#ip_address').val(),
-      hostname: $('#hostname').val(),
-      username: $('#username').val(),
-      password: $('#password').val(),
-      vendor: $('#vendor').val(),
-      api_port: parseInt($('#api_port').val()) || 8728,
-      ssh_port: parseInt($('#ssh_port').val()) || 22,
-      device_category: $('#device_category').val(),
-      segmentation_type: $('#segment').val()
-    });
+    const segmentSelect = $('#segment');
+    const segmentId = segmentSelect.val();
+    const segmentType = segmentSelect.find('option:selected').data('type');
+    
+    const data = {
+        ip_address: $('#ip_address').val(),
+        hostname: $('#hostname').val(),
+        username: $('#username').val(),
+        password: $('#password').val(),
+        vendor: $('#vendor').val(),
+        api_port: parseInt($('#api_port').val()) || 8728,
+        ssh_port: parseInt($('#ssh_port').val()) || 22,
+        device_category: $('#device_category').val(),
+        segmentation_id: segmentId,
+        segmentation_type: segmentType
+    };
+    
+    console.log('Saving device data:', data);
+    return JSON.stringify(data);
   }
 
   function toast(msg, type = 'success') {
@@ -168,6 +179,11 @@
       const id = $('#device_id').val();
       const url = id ? `/device/${id}/save/` : '/device/add/';
       
+      // Show loading state
+      const $btn = $(this);
+      const originalText = $btn.html();
+      $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
+      
       $.ajax({
         url: url,
         type: 'POST',
@@ -182,6 +198,9 @@
           const errorMsg = xhr.responseJSON?.error || 'Error saving device';
           toast(errorMsg, 'error');
           console.error('Save error:', errorMsg);
+          
+          // Reset button state
+          $btn.prop('disabled', false).html(originalText);
         }
       });
     });
@@ -237,6 +256,16 @@
           toast('Bulk delete failed', 'error');
         }
       });
+    });
+
+    // Add segment change handler
+    $(document).on('change', '#segment', function() {
+        const $selected = $(this).find('option:selected');
+        console.log('Segment changed to:', {
+            id: $(this).val(),
+            type: $selected.data('type'),
+            text: $selected.text()
+        });
     });
   }
 
