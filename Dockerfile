@@ -1,29 +1,27 @@
+# syntax=docker/dockerfile:1
 FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TZ=Asia/Jakarta
 
-# Set work directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
+# ----- sistem build deps (optional, tapi berguna utk cryptography dkk) -----
+RUN apt-get update && apt-get install -y build-essential libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first to leverage Docker cache
-COPY NA_Project/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# ----- Python deps -----
+COPY NA_Project/requirements.txt ./requirements.txt
+RUN --mount=type=cache,target=/root/.cache \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-# Copy project
+# ----- Copy source -----
 COPY NA_Project/ .
 
-# Create directories for static and media files
-RUN mkdir -p static media
+# pastikan folder statik / media / db ada
+RUN mkdir -p static media db
 
-# Expose port
 EXPOSE 8000
-
-# Start command
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["gunicorn", "NA_Project.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

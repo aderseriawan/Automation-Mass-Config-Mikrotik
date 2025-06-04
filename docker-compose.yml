@@ -8,7 +8,7 @@ services:
       - ./NA_Project:/app
       - static_volume:/app/static
       - media_volume:/app/media
-      - db_volume:/app/NA_Project/db.sqlite3
+      - db_volume:/app/db  
     ports:
       - "8000:8000"
     environment:
@@ -17,12 +17,19 @@ services:
       - DJANGO_SUPERUSER_EMAIL=admin@example.com
     restart: always
     command: >
-      sh -c "python manage.py migrate auth &&
-             python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             echo \"from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'admin123') if not User.objects.filter(username='admin').exists() else None\" | python manage.py shell &&
-             python manage.py runserver 0.0.0.0:8000"
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput --clear &&
+        echo \"from django.contrib.auth import get_user_model;
+              User=get_user_model();
+              u='${DJANGO_SUPERUSER_USERNAME}';
+              User.objects.filter(username=u).exists() or
+              User.objects.create_superuser(
+                  u, '${DJANGO_SUPERUSER_EMAIL}', '${DJANGO_SUPERUSER_PASSWORD}'
+              )\" | python manage.py shell &&
+        gunicorn NA_Project.wsgi:application --bind 0.0.0.0:8000 --workers 3"
 
 volumes:
   static_volume:
   media_volume:
+  db_volume:   
