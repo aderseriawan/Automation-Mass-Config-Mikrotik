@@ -7,23 +7,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# -- deps yg sering dibutuhkan cryptography / pillow --
+# deps build (cryptography, Pillow, dll)
 RUN apt-get update && \
     apt-get install -y build-essential libffi-dev libjpeg-dev zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# -- deps Python --
 COPY NA_Project/requirements.txt .
 RUN --mount=type=cache,target=/root/.cache \
     pip install --upgrade pip && pip install -r requirements.txt
 
-# -- copy source --
+# copy source
 COPY NA_Project/ .
 
-# direktori data persisten (akan di-mount)
-RUN mkdir -p static media db
+# direktori statik & media
+RUN mkdir -p static media
 
-# entrypoint agar migrate SELALU jalan sebelum gunicorn
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
